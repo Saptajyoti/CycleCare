@@ -351,6 +351,26 @@ function App() {
         )}
         </div>
       </main>
+      <nav className="mobile-navigation" aria-label="Primary navigation">
+        {[
+          { name: "Overview", icon: LayoutDashboard, label: "Home" },
+          { name: "My Calendar", icon: CalendarDays, label: "Calendar" },
+          { name: "My Symptoms", icon: Activity, label: "Symptoms" },
+          { name: "Learn", icon: BookOpen, label: "Learn" },
+          { name: "Settings", icon: Settings, label: "Settings" },
+        ].map(({ name, icon: Icon, label }) => (
+          <button
+            key={name}
+            type="button"
+            className={activePage === name ? "active" : ""}
+            aria-current={activePage === name ? "page" : undefined}
+            onClick={() => navigateTo(name)}
+          >
+            <Icon size={19} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
       </>
       )}
       {showOnboarding && !vaultLocked && (
