@@ -3275,21 +3275,13 @@ body {
   .welcome-section::before { width: 150px; height: 140px; opacity: 0.42; }
 }
 
-/* Distributed floral accents: a few deliberate placements across the page. */
+/* Keep decorative florals contained within their own cards. */
 .section-heading {
   position: relative;
-  padding-right: 74px;
+  padding-right: 0;
 }
 .section-heading::after {
-  content: "";
-  position: absolute;
-  top: -25px;
-  right: 4px;
-  width: 72px;
-  height: 68px;
-  background: url("./assets/blossom-corner.svg") 18% 18% / 180px auto no-repeat;
-  opacity: 0.54;
-  pointer-events: none;
+  content: none;
 }
 
 .stat-card:nth-child(2), .insight-card, .page-card {
@@ -3335,11 +3327,10 @@ body {
 }
 
 @media (max-width: 700px) {
-  .section-heading { padding-right: 52px; }
-  .section-heading::after { top: -12px; right: 0; width: 54px; height: 54px; }
+  .section-heading { padding-right: 0; }
   .page-card::before { width: 105px; height: 96px; opacity: 0.15; }
   .insight-card::after { width: 72px; height: 62px; opacity: 0.25; }
 }
 
-/* Keep existing card content and controls from being clipped. */
-.stat-card:nth-child(2), .insight-card, .page-card { overflow: visible; }
+/* Clip each floral illustration to its card so it cannot spill into page whitespace. */
+.stat-card:nth-child(2), .insight-card, .page-card { overflow: hidden; }
