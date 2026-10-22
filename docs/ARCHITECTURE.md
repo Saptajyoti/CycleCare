@@ -34,7 +34,7 @@ Learn combines the existing article collection with separately maintained Englis
 
 ## Reminders and pregnancy information
 
-Reminders are opt-in. The daily, estimated-window, and medicine reminders can be configured, along with custom reminders. The app checks on a timer only while the Reminders page is open. Browser notifications require user permission; otherwise the reminder appears in the page. The app does not schedule background notifications after it is closed.
+Reminders are opt-in. The daily, estimated-window, and medicine reminders can be configured, along with custom reminders. While the Reminders page is open, the app checks every ten seconds and when the page regains focus/visibility; each enabled reminder is delivered at most once per local calendar day. Browser notifications require user permission; otherwise reminder text appears in the page. A test-reminder control checks the browser notification or in-page fallback immediately. The app does not schedule background notifications after it is closed.
 
 Pregnancy mode is opt-in and requires the user to affirm a positive test or professional confirmation. It pauses cycle estimates and provides approximate timing from the last recorded period plus links to external NHS pregnancy information. This is not pregnancy dating or a substitute for prenatal care; weekly information is linked externally rather than embedded in CycleCare.
 

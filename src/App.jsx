@@ -1429,7 +1429,7 @@ function RemindersPage({ discreetMode }) {
       const fired = getFiredReminders();
       const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
       const estimate = getCycleEstimate(getPeriodEntries());
-      const matching = current.find((reminder) => {
+      const matching = current.filter((reminder) => {
         if (!reminder.enabled || reminder.time !== time || fired[reminder.id] === today) return false;
         if (reminder.id !== "expected-period") return true;
         return estimate &&
@@ -1437,23 +1437,69 @@ function RemindersPage({ discreetMode }) {
           daysBetween(localDateStringForDate(estimate.windowStart), today) >= 0 &&
           daysBetween(localDateStringForDate(estimate.windowEnd), today) <= 0;
       });
-      if (matching) {
-        const title = discreetMode ? "Diary" : "CycleCare";
-        const body = discreetMode ? "Time to check in." : matching.message;
-        if (permission === "granted") new Notification(title, { body });
-        else setMessage(body);
-        fired[matching.id] = today;
+
+      if (!matching.length) return;
+
+      const title = discreetMode ? "Diary" : "CycleCare";
+      const bodies = [];
+      matching.forEach((reminder) => {
+        const body = discreetMode ? "Time to check in." : reminder.message;
+        try {
+          if (permission === "granted") {
+            new Notification(title, { body, tag: `cyclecare-${reminder.id}` });
+          }
+          bodies.push(body);
+          fired[reminder.id] = today;
+        } catch {
+          bodies.push(`${body} (shown here because the browser notification could not be displayed)`);
+          fired[reminder.id] = today;
+        }
+      });
+      try {
         localStorage.setItem("cyclecare_reminder_fired", JSON.stringify(fired));
+      } catch {
+        bodies.push("CycleCare could not save the delivery status, so a reminder may appear again.");
       }
+      if (bodies.length) setMessage(bodies.join(" "));
     };
-    const timer = window.setInterval(inspectReminders, 30000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") inspectReminders();
+    };
+    const timer = window.setInterval(inspectReminders, 10000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", inspectReminders);
     inspectReminders();
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", inspectReminders);
+    };
   }, [discreetMode, permission]);
 
   function save(next) {
     setReminders(next);
-    setHealthItem("cyclecare_reminders", JSON.stringify(next));
+    try {
+      setHealthItem("cyclecare_reminders", JSON.stringify(next));
+      setMessage("Reminder settings saved on this device.");
+    } catch {
+      setMessage("Could not save reminder settings. Check browser storage and try again.");
+    }
+  }
+
+  function deliverTestReminder() {
+    const title = discreetMode ? "Diary" : "CycleCare";
+    const body = discreetMode ? "Time to check in." : "This is a test reminder.";
+    if (permission === "granted") {
+      try {
+        new Notification(title, { body, tag: "cyclecare-test" });
+        setMessage("Test notification sent. Scheduled reminders are checked while this page is open.");
+        return;
+      } catch {
+        setMessage(`${body} Browser notification could not be displayed.`);
+        return;
+      }
+    }
+    setMessage(body);
   }
 
   async function requestPermission() {
@@ -1487,6 +1533,9 @@ function RemindersPage({ discreetMode }) {
       </p>
       <button className="secondary-button" onClick={requestPermission}>Enable browser notifications</button>
       <p className="privacy-hint">Notification permission: {permission}</p>
+      <button className="secondary-button" type="button" onClick={deliverTestReminder}>
+        Send test reminder
+      </button>
       {defaults.map((item) => {
         const current = reminders.find((reminder) => reminder.id === item.id) || { ...item, enabled: false };
         return (
@@ -2798,11 +2847,22 @@ function getReminders() {
         typeof item.id === "string" &&
         typeof item.title === "string" &&
         typeof item.message === "string" &&
-        /^\d{2}:\d{2}$/.test(item.time) &&
+        /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(item.time) &&
         typeof item.enabled === "boolean"
     );
   } catch {
     return [];
+  }
+}
+
+function getFiredReminders() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("cyclecare_reminder_fired") || "{}");
+    return stored && typeof stored === "object" && !Array.isArray(stored)
+      ? stored
+      : {};
+  } catch {
+    return {};
   }
 }
 

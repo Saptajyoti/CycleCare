@@ -29,7 +29,7 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 
 ## Reminders and data controls
 
-- [ ] Reminders: configure each default and a custom reminder; verify they start disabled and can be enabled/disabled and timed. While the Reminders page remains open, test in-app fallback and browser notification permission. Close the app and confirm the limitation is clearly disclosed (no background scheduling).
+- [ ] Reminders: configure each default and a custom reminder; verify they start disabled and can be enabled/disabled and timed. Use “Send test reminder” to verify browser notification or in-page fallback. Set an enabled reminder for the current local minute and confirm it fires while the page is open; verify multiple same-time reminders each fire once and do not repeat that day. Hide and refocus the page to verify it resumes checking. Close the app and confirm the limitation is clearly disclosed (no background scheduling).
 - [ ] JSON export: create disposable records, export, and inspect `periods`, `symptoms`, `reminders`, preferences, and timestamp. Keep the file private.
 - [ ] CSV export: verify quoting and that dates/details from both period and symptom records are included.
 - [ ] JSON import: import a valid export after confirmation and verify records replace current records. Cancel confirmation; test malformed JSON, future dates, and invalid records; verify errors are visible and invalid data is not imported.
