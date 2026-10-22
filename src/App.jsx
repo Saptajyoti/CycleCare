@@ -385,6 +385,127 @@ function App() {
   );
 }
 
+function FloralDecoration({ className = "" }) {
+  return (
+    <svg
+      className={`floral-decoration ${className}`}
+      viewBox="0 0 120 120"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M18 112c22-20 40-38 49-62 5-13 7-24 8-39" fill="none" stroke="#9b8a91" strokeWidth="2" strokeLinecap="round" />
+      <path d="M42 85c-17 1-25-5-28-17 14-2 23 3 28 17Zm17-25c14-2 22-9 22-21-13 0-21 7-22 21Zm13-31c-10-7-12-16-7-26 10 6 13 14 7 26Z" fill="#aab59b" />
+      <g fill="#e9b6c7">
+        <ellipse cx="62" cy="45" rx="5" ry="11" />
+        <ellipse cx="62" cy="45" rx="5" ry="11" transform="rotate(72 62 45)" />
+        <ellipse cx="62" cy="45" rx="5" ry="11" transform="rotate(144 62 45)" />
+        <ellipse cx="62" cy="45" rx="5" ry="11" transform="rotate(216 62 45)" />
+        <ellipse cx="62" cy="45" rx="5" ry="11" transform="rotate(288 62 45)" />
+      </g>
+      <circle cx="62" cy="45" r="4" fill="#c88b9f" />
+      <g fill="#d7a3b8">
+        <ellipse cx="84" cy="27" rx="4" ry="8" />
+        <ellipse cx="84" cy="27" rx="4" ry="8" transform="rotate(72 84 27)" />
+        <ellipse cx="84" cy="27" rx="4" ry="8" transform="rotate(144 84 27)" />
+        <ellipse cx="84" cy="27" rx="4" ry="8" transform="rotate(216 84 27)" />
+        <ellipse cx="84" cy="27" rx="4" ry="8" transform="rotate(288 84 27)" />
+      </g>
+      <circle cx="84" cy="27" r="3" fill="#c88b9f" />
+    </svg>
+  );
+}
+
+function RefreshmentIllustration({ kind, label }) {
+  if (kind === "fruit") {
+    return (
+      <svg className={`refreshment-art refreshment-art-${kind}`} viewBox="0 0 160 110" role="img" aria-label={label}>
+        <ellipse cx="80" cy="92" rx="47" ry="7" fill="#eadce0" />
+        <path d="M43 63c8 22 22 31 37 31s29-9 37-31H43Z" fill="#f7e7eb" stroke="#b98798" strokeWidth="2" />
+        <path d="M47 63h66" stroke="#b98798" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="62" cy="52" r="13" fill="#cf7890" />
+        <circle cx="82" cy="45" r="14" fill="#bb6681" />
+        <circle cx="101" cy="53" r="13" fill="#d79567" />
+        <path d="M81 30c4-9 11-12 18-10-2 7-8 11-18 10Zm-1 1c-4-8-10-11-16-9 2 7 8 10 16 9Z" fill="#94a987" />
+        <circle cx="58" cy="48" r="2" fill="#f8d9e2" />
+        <circle cx="78" cy="40" r="2" fill="#f8d9e2" />
+      </svg>
+    );
+  }
+
+  const drinkColors = {
+    ginger: "#d9a05e",
+    peppermint: "#a4b58c",
+    lemon: "#e8c96f",
+    water: "#a9d8df",
+    milk: "#f3e8d7",
+  };
+
+  return (
+    <svg className={`refreshment-art refreshment-art-${kind}`} viewBox="0 0 160 110" role="img" aria-label={label}>
+      <ellipse cx="78" cy="94" rx="42" ry="6" fill="#eadce0" />
+      <path d="M49 43h57l-5 39c-1 7-5 11-12 11H66c-7 0-11-4-12-11l-5-39Z" fill="#fffaf7" stroke="#b98798" strokeWidth="2" />
+      <path d="M106 53h9c12 0 12 21 0 21h-11" fill="none" stroke="#b98798" strokeWidth="3" strokeLinecap="round" />
+      <path d="M53 59h49l-3 23c-1 5-4 8-10 8H66c-6 0-9-3-10-8l-3-23Z" fill={drinkColors[kind]} opacity=".88" />
+      <path d="M65 30c-6-7 5-9 0-16m16 16c-6-7 5-9 0-16m16 16c-6-7 5-9 0-16" fill="none" stroke="#bc9ca8" strokeWidth="2" strokeLinecap="round" />
+      {kind === "lemon" && (
+        <>
+          <circle cx="119" cy="37" r="13" fill="#f2d780" stroke="#d6b966" strokeWidth="2" />
+          <circle cx="119" cy="37" r="8" fill="#fff4c6" />
+          <path d="M119 29v16m-7-8h14m-12-6 10 12m0-12-10 12" stroke="#d6b966" strokeWidth="1" />
+        </>
+      )}
+      {kind === "ginger" && <path d="M43 83c-7-5-11-1-10 5 1 4 6 5 10 2 4 4 9 1 8-4-1-4-5-5-8-3Z" fill="#d2a06d" stroke="#b98761" strokeWidth="1.5" />}
+      {kind === "peppermint" && <path d="M113 82c2-15 11-24 24-25-1 13-9 22-24 25Zm0 0c-9-12-8-23 0-31 8 10 8 20 0 31Z" fill="#9eb18d" stroke="#829776" strokeWidth="1.5" />
+      }
+    </svg>
+  );
+}
+
+const selfCareRefreshments = [
+  {
+    kind: "ginger",
+    name: "Ginger tea",
+    description: "A warming drink that some people find comforting.",
+    note: "Comfort is personal; this is a self-care option, not a treatment.",
+    alt: "Illustration of a cup of warm ginger tea",
+  },
+  {
+    kind: "peppermint",
+    name: "Peppermint tea",
+    description: "A fresh, soothing herbal drink to enjoy warm or cool.",
+    note: "Check the ingredients if you have allergies or sensitivities.",
+    alt: "Illustration of a cup of peppermint tea with mint leaves",
+  },
+  {
+    kind: "lemon",
+    name: "Lemon water",
+    description: "A bright twist if it makes drinking water more enjoyable.",
+    note: "Choose the taste and temperature that feel good to you.",
+    alt: "Illustration of lemon water with a fresh lemon slice",
+  },
+  {
+    kind: "water",
+    name: "Fresh water",
+    description: "Keep a glass or bottle nearby as a gentle hydration reminder.",
+    note: "Drink to thirst; fluid needs differ from person to person.",
+    alt: "Illustration of a refreshing glass of water",
+  },
+  {
+    kind: "fruit",
+    name: "Fresh fruit",
+    description: "A simple snack idea to enjoy as part of varied meals.",
+    note: "Pick fruit you like and that is easy for you to access.",
+    alt: "Illustration of a bowl of fresh fruit and berries",
+  },
+  {
+    kind: "milk",
+    name: "Warm milk",
+    description: "A familiar, comforting beverage for a quiet moment.",
+    note: "Dairy or a suitable alternative can be chosen to fit your needs.",
+    alt: "Illustration of a warm cup of milk",
+  },
+];
+
 /* -------------------- DASHBOARD -------------------- */
 
 function Dashboard({ discreetMode }) {
@@ -481,6 +602,8 @@ function Dashboard({ discreetMode }) {
           <Heart size={62} strokeWidth={1.1} />
           <span>care for you</span>
         </div>
+        <FloralDecoration className="floral-decoration-hero" />
+        <FloralDecoration className="floral-decoration-hero-secondary" />
       </section>
 
       <section className="section-heading">
@@ -609,6 +732,35 @@ function Dashboard({ discreetMode }) {
         >
           Log today
         </button>
+      </section>
+
+      <section className="self-care-section" aria-labelledby="self-care-heading">
+        <FloralDecoration className="floral-decoration-self-care" />
+        <div className="self-care-heading">
+          <span className="eyebrow">SMALL MOMENTS OF COMFORT</span>
+          <h2 id="self-care-heading">Little Comforts, Better Days</h2>
+          <p>
+            Discover simple ways to stay hydrated, feel comfortable, and care
+            for yourself throughout your cycle.
+          </p>
+        </div>
+        <div className="refreshment-grid">
+          {selfCareRefreshments.map((item) => (
+            <article className="refreshment-card" key={item.kind}>
+              <div className="refreshment-illustration">
+                <RefreshmentIllustration kind={item.kind} label={item.alt} />
+              </div>
+              <div className="refreshment-copy">
+                <h3>{item.name}</h3>
+                <p>{item.description}</p>
+                <small>{item.note}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+        <p className="self-care-disclaimer">
+          These are general comfort ideas, not medical advice or treatments.
+        </p>
       </section>
 
       <section className="bottom-grid">
