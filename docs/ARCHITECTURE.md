@@ -2,9 +2,9 @@
 
 ## Application structure
 
-CycleCare is a Vite-served React single-page application. `src/main.jsx` mounts `App` from `src/App.jsx`; `App.css` and `index.css` provide styles. There is no backend, API client, database, authentication service, service worker, or router configuration. Navigation is held in React state.
+CycleCare is a Vite-served React single-page application. `src/main.jsx` mounts `App` from `src/App.jsx`; `App.css` and `index.css` provide styles. Date-only and cycle-estimate helpers live in `src/utils/cycle.js` and are covered by Node's built-in test runner. There is no backend, API client, database, authentication service, service worker, or router configuration. Navigation is held in React state.
 
-`App` owns the active page, mobile menu, onboarding state, language, age group, pregnancy-information visibility, Discreet Mode, and optional vault lock state. It renders Overview, My Calendar, My Symptoms, Insights, Learn, Ask, When to see a doctor, Reminders, Pregnancy, or Settings. Custom `cyclecare-navigate` and `cyclecare-edit-symptom` events connect in-app navigation and calendar-to-symptom editing.
+`App` owns the active page, mobile menu, onboarding state, language, age group, pregnancy-information visibility, Discreet Mode, and optional vault lock state. It renders Overview, My Calendar, My Symptoms, Insights, Learn, Ask, When to see a doctor, Reminders, Pregnancy, or Settings. Custom `cyclecare-navigate` and `cyclecare-edit-symptom` events connect in-app navigation and calendar-to-symptom editing. The Overview distinguishes saved period history from an estimated period window, shows recent recorded check-ins, and links to logged-record-based care guidance. Self-care cards contain original lightweight SVG illustrations; these suggestions do not make treatment claims.
 
 ## Onboarding and records
 
@@ -18,7 +18,7 @@ Both record types use local calendar dates (`YYYY-MM-DD`). Calendar-day interval
 
 ## Cycle estimates and insights
 
-`getCycleEstimate` needs at least three recorded period starts. It takes up to the six most recent complete intervals, uses their median, and presents a date range based on observed deviation (at least two days on either side). A spread greater than seven days is labelled an irregular tracking pattern and increases the range. If the newest interval is over seven days longer than the median of earlier intervals, the app asks the user to review a possible missing log before showing the estimate.
+`getCycleEstimate` needs at least three distinct valid period starts. It takes up to the six most recent complete intervals, uses their median, and presents a date range based on observed deviation (at least two days on either side). A spread greater than seven days is labelled an irregular tracking pattern and increases the range. If the newest interval is over seven days longer than the median of earlier intervals, the app asks the user to review a possible missing log before showing the estimate. Invalid dates and duplicate dates are ignored by the pure helper; normal record loading also validates and deduplicates entries.
 
 This is an estimate from entered dates, not a guarantee, diagnosis, ovulation confirmation, or contraception method. Fertility-window estimates are optional, hidden for under-18 users unless enabled, and withheld when the recent pattern is marked irregular. Pregnancy mode suppresses cycle estimates.
 
@@ -44,12 +44,12 @@ Without the optional PIN vault, records are stored in browser `localStorage` and
 
 The optional four-digit PIN vault uses Web Crypto AES-GCM with a 256-bit key derived by PBKDF2/SHA-256 and a random salt. The PIN is not stored, and forgotten PINs cannot be recovered. A short PIN is vulnerable to offline guessing if someone obtains the browser storage; this is not device security. Browser crypto requires a secure context. Only the configured health-data keys are moved into the encrypted vault; other app preferences are not all encrypted.
 
-Settings provide JSON and CSV exports, JSON import, and deletion of all keys beginning with `cyclecare_` in this browser. Import validates record dates and durations and replaces period, symptom, reminder, pregnancy-mode, age-group, and tracked-symptom data after confirmation. Exports contain sensitive health data and should be kept private. No backend transfer is implemented by the app.
+Settings provide JSON and CSV exports, JSON import, and deletion of all keys beginning with `cyclecare_` in this browser. Import validates record dates, period durations, symptom fields, duplicate period dates, and reminder times before replacing period, symptom, reminder, pregnancy-mode, age-group, and tracked-symptom data after confirmation. Exports contain sensitive health data and should be kept private. No backend transfer is implemented by the app.
 
 ## Accessibility and known limits
 
 Settings include text-size and high-contrast preferences; reduced-motion styles and responsive layouts are present. The app should still be manually checked at 360 px, with keyboard-only operation and a screen reader.
 
-There is no moderated community, AI assistant, full Hindi translation, or embedded pregnancy-week curriculum. There is no automated test runner configured; use the manual checklist and the Vite build/linter for validation. Health copy and guidance rules need appropriate clinical and local review before real-world medical use.
+There is no moderated community, AI assistant, full Hindi translation, or embedded pregnancy-week curriculum. `npm test` runs focused date and cycle-estimate tests; browser workflows and accessibility still require manual checks. Health copy and guidance rules need appropriate clinical and local review before real-world medical use.
 
 Vite uses its default root base path. Static paths beginning with `/` assume root hosting unless `base` is configured for subpath deployment.

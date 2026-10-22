@@ -32,6 +32,14 @@ import {
   Volume2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import {
+  addDays,
+  daysBetween,
+  getCycleEstimate,
+  localDateStringForDate,
+  parseDateOnly,
+} from "./utils/cycle";
+import { validateImportData } from "./utils/importData";
 
 import "./App.css";
 
@@ -416,18 +424,30 @@ function FloralDecoration({ className = "" }) {
 }
 
 function RefreshmentIllustration({ kind, label }) {
-  if (kind === "fruit") {
+  if (kind === "fruit" || kind === "snack") {
     return (
       <svg className={`refreshment-art refreshment-art-${kind}`} viewBox="0 0 160 110" role="img" aria-label={label}>
         <ellipse cx="80" cy="92" rx="47" ry="7" fill="#eadce0" />
         <path d="M43 63c8 22 22 31 37 31s29-9 37-31H43Z" fill="#f7e7eb" stroke="#b98798" strokeWidth="2" />
         <path d="M47 63h66" stroke="#b98798" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="62" cy="52" r="13" fill="#cf7890" />
-        <circle cx="82" cy="45" r="14" fill="#bb6681" />
-        <circle cx="101" cy="53" r="13" fill="#d79567" />
-        <path d="M81 30c4-9 11-12 18-10-2 7-8 11-18 10Zm-1 1c-4-8-10-11-16-9 2 7 8 10 16 9Z" fill="#94a987" />
-        <circle cx="58" cy="48" r="2" fill="#f8d9e2" />
-        <circle cx="78" cy="40" r="2" fill="#f8d9e2" />
+        {kind === "fruit" ? (
+          <>
+            <circle cx="62" cy="52" r="13" fill="#cf7890" />
+            <circle cx="82" cy="45" r="14" fill="#bb6681" />
+            <circle cx="101" cy="53" r="13" fill="#d79567" />
+            <path d="M81 30c4-9 11-12 18-10-2 7-8 11-18 10Zm-1 1c-4-8-10-11-16-9 2 7 8 10 16 9Z" fill="#94a987" />
+            <circle cx="58" cy="48" r="2" fill="#f8d9e2" />
+            <circle cx="78" cy="40" r="2" fill="#f8d9e2" />
+          </>
+        ) : (
+          <>
+            <path d="M55 54c0-8 6-14 14-14 6 0 10 4 12 9 2-5 7-8 13-8 8 0 14 6 14 14v10H55V54Z" fill="#d7b58c" stroke="#b98761" strokeWidth="2" />
+            <path d="M62 57h39" stroke="#fff1d9" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="67" cy="51" r="2" fill="#977254" />
+            <circle cx="94" cy="50" r="2" fill="#977254" />
+            <path d="M78 31c4-8 11-10 17-8-3 7-9 10-17 8Z" fill="#94a987" />
+          </>
+        )}
       </svg>
     );
   }
@@ -467,6 +487,7 @@ const selfCareRefreshments = [
     name: "Ginger tea",
     description: "A warming drink that some people find comforting.",
     note: "Comfort is personal; this is a self-care option, not a treatment.",
+    preparation: "Steep fresh ginger or a tea bag in hot water; adjust to taste.",
     alt: "Illustration of a cup of warm ginger tea",
   },
   {
@@ -474,6 +495,7 @@ const selfCareRefreshments = [
     name: "Peppermint tea",
     description: "A fresh, soothing herbal drink to enjoy warm or cool.",
     note: "Check the ingredients if you have allergies or sensitivities.",
+    preparation: "Steep peppermint leaves or a tea bag following the package directions.",
     alt: "Illustration of a cup of peppermint tea with mint leaves",
   },
   {
@@ -481,6 +503,7 @@ const selfCareRefreshments = [
     name: "Lemon water",
     description: "A bright twist if it makes drinking water more enjoyable.",
     note: "Choose the taste and temperature that feel good to you.",
+    preparation: "Add a lemon slice to still or sparkling water if you like.",
     alt: "Illustration of lemon water with a fresh lemon slice",
   },
   {
@@ -488,6 +511,7 @@ const selfCareRefreshments = [
     name: "Fresh water",
     description: "Keep a glass or bottle nearby as a gentle hydration reminder.",
     note: "Drink to thirst; fluid needs differ from person to person.",
+    preparation: "Pour a glass chilled or at room temperature, whichever you prefer.",
     alt: "Illustration of a refreshing glass of water",
   },
   {
@@ -495,6 +519,7 @@ const selfCareRefreshments = [
     name: "Fresh fruit",
     description: "A simple snack idea to enjoy as part of varied meals.",
     note: "Pick fruit you like and that is easy for you to access.",
+    preparation: "Wash, slice, or enjoy whole according to the fruit.",
     alt: "Illustration of a bowl of fresh fruit and berries",
   },
   {
@@ -502,7 +527,16 @@ const selfCareRefreshments = [
     name: "Warm milk",
     description: "A familiar, comforting beverage for a quiet moment.",
     note: "Dairy or a suitable alternative can be chosen to fit your needs.",
+    preparation: "Warm gently and choose a milk or alternative that suits you.",
     alt: "Illustration of a warm cup of milk",
+  },
+  {
+    kind: "snack",
+    name: "A simple snack",
+    description: "Choose an easy snack you enjoy as part of your usual meals.",
+    note: "There is no special food required for a menstrual cycle.",
+    preparation: "Pair a favorite cracker or toast with a topping you enjoy.",
+    alt: "Illustration of a small, balanced snack",
   },
 ];
 
@@ -521,6 +555,13 @@ function Dashboard({ discreetMode }) {
   const latestEntry = entries.length
     ? entries[entries.length - 1]
     : null;
+  const symptomEntries = sortSymptomRecords(getSymptomEntries());
+  const recentCheckIns = symptomEntries.slice(0, 3);
+  const pregnancyMode = getHealthItem("cyclecare_pregnancy_mode") === "true";
+  const cycleEstimate = pregnancyMode ? null : getCycleEstimate(entries);
+  const careGuidance = discreetMode
+    ? []
+    : getCareGuidance(entries, symptomEntries);
 
   function handleLogPeriod(event) {
     event.preventDefault();
@@ -702,6 +743,162 @@ function Dashboard({ discreetMode }) {
         </section>
       )}
 
+      <section className="dashboard-overview-grid" aria-label="Cycle records overview">
+        <article className="dashboard-record-card">
+          <div className="dashboard-card-heading">
+            <span className="eyebrow">ESTIMATE, NOT A RECORD</span>
+            <CalendarDays size={19} aria-hidden="true" />
+          </div>
+          {discreetMode ? (
+            <p>Personal cycle details are hidden in Discreet Mode.</p>
+          ) : pregnancyMode ? (
+            <>
+              <h2>Cycle estimates are paused</h2>
+              <p>Estimates are hidden while Pregnancy mode is on.</p>
+            </>
+          ) : cycleEstimate?.needsReview ? (
+            <>
+              <h2>Review a possible missing log</h2>
+              <p>A longer-than-usual gap needs your review before an estimate is shown.</p>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
+              >
+                Review calendar <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </>
+          ) : cycleEstimate ? (
+            <>
+              <h2>{formatDateRange(cycleEstimate.windowStart, cycleEstimate.windowEnd)}</h2>
+              <p>
+                Based on the median of {cycleEstimate.cyclesUsed} recent recorded
+                cycle gaps ({cycleEstimate.medianCycleLength} days). This is an
+                estimate, not a guarantee.
+              </p>
+              {cycleEstimate.isIrregular && (
+                <p className="estimate-uncertainty">
+                  Recent recorded lengths varied, so this estimate has extra uncertainty.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2>Not enough history yet</h2>
+              <p>Record at least three period start dates before a date range can be estimated.</p>
+            </>
+          )}
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
+          >
+            View calendar
+          </button>
+        </article>
+
+        <article className="dashboard-record-card">
+          <div className="dashboard-card-heading">
+            <span className="eyebrow">RECORDED PERIOD HISTORY</span>
+            <Droplets size={19} aria-hidden="true" />
+          </div>
+          {discreetMode ? (
+            <p>Personal cycle details are hidden in Discreet Mode.</p>
+          ) : entries.length ? (
+            <ul className="dashboard-period-history">
+              {entries.slice(-3).reverse().map((entry) => (
+                <li key={entry.startDate}>
+                  <span>{formatDate(entry.startDate)}</span>
+                  <span>{entry.periodLength} recorded {entry.periodLength === 1 ? "day" : "days"}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No period starts have been recorded yet.</p>
+          )}
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
+          >
+            Review period records <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </article>
+      </section>
+
+      <section className="dashboard-record-card dashboard-checkins">
+        <div className="dashboard-card-heading">
+          <div>
+            <span className="eyebrow">YOUR RECENT NOTES</span>
+            <h2>Recent symptom & mood check-ins</h2>
+          </div>
+          <Activity size={19} aria-hidden="true" />
+        </div>
+        {discreetMode ? (
+          <p>Personal check-in details are hidden in Discreet Mode.</p>
+        ) : recentCheckIns.length ? (
+          <ul className="recent-checkin-list">
+            {recentCheckIns.map((record) => (
+              <li key={record.id}>
+                <div>
+                  <strong>{formatDate(record.date)}</strong>
+                  <span>
+                    {record.symptoms.length
+                      ? record.symptoms.slice(0, 3).join(", ")
+                      : "No symptoms selected"}
+                    {record.symptoms.length > 3 ? ", and more" : ""}
+                  </span>
+                </div>
+                <span className="checkin-mood">
+                  Mood: {record.mood.replace("-", " ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No symptom check-ins have been recorded yet.</p>
+        )}
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Symptoms" }))}
+        >
+          Log a symptom today
+        </button>
+      </section>
+
+      {!discreetMode && careGuidance.length > 0 && (
+        <section className="dashboard-record-card dashboard-guidance">
+          <div className="dashboard-card-heading">
+            <div>
+              <span className="eyebrow">BASED ON YOUR LOGGED RECORDS</span>
+              <h2>Guidance to review</h2>
+            </div>
+            <Stethoscope size={19} aria-hidden="true" />
+          </div>
+          <p className="dashboard-guidance-note">
+            These prompts are not diagnosis or emergency monitoring.
+          </p>
+          {careGuidance.slice(0, 2).map((item) => (
+            <article className="dashboard-guidance-item" key={item.id}>
+              <h3>{item.title}</h3>
+              <p>{item.observed}</p>
+              <p>{item.nextStep}</p>
+              <a href={item.source.url} target="_blank" rel="noreferrer">
+                {item.source.name}
+              </a>
+            </article>
+          ))}
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "When to see a doctor" }))}
+          >
+            See all guidance <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </section>
+      )}
+
       <section className="personal-insight-card">
         <span className="eyebrow">A PERSONAL RECORD PATTERN</span>
         {discreetMode ? (
@@ -738,12 +935,22 @@ function Dashboard({ discreetMode }) {
         <FloralDecoration className="floral-decoration-self-care" />
         <div className="self-care-heading">
           <span className="eyebrow">SMALL MOMENTS OF COMFORT</span>
-          <h2 id="self-care-heading">Little Comforts, Better Days</h2>
+          <h2 id="self-care-heading">Self-Care &amp; Refreshments</h2>
           <p>
             Discover simple ways to stay hydrated, feel comfortable, and care
             for yourself throughout your cycle.
           </p>
         </div>
+        <article className="daily-care-card">
+          <Sparkles size={20} aria-hidden="true" />
+          <div>
+            <h3>A Little Care for Yourself Today</h3>
+            <p>
+              Choose a drink you enjoy, take a comfortable pause, and notice
+              what would feel supportive for you today.
+            </p>
+          </div>
+        </article>
         <div className="refreshment-grid">
           {selfCareRefreshments.map((item) => (
             <article className="refreshment-card" key={item.kind}>
@@ -754,6 +961,10 @@ function Dashboard({ discreetMode }) {
                 <h3>{item.name}</h3>
                 <p>{item.description}</p>
                 <small>{item.note}</small>
+                <details className="refreshment-preparation">
+                  <summary>Simple preparation idea</summary>
+                  <p>{item.preparation}</p>
+                </details>
               </div>
             </article>
           ))}
@@ -952,7 +1163,8 @@ function CalendarPage() {
   const firstDay = currentMonth.getDay();
   const numberOfDays = new Date(year, month + 1, 0).getDate();
   const entries = getPeriodEntries();
-  const estimate = getCycleEstimate(entries, confirmedGap);
+  const pregnancyMode = getHealthItem("cyclecare_pregnancy_mode") === "true";
+  const estimate = pregnancyMode ? null : getCycleEstimate(entries, confirmedGap);
   const fertilityVisible =
     getHealthItem("cyclecare_age_group") !== "under18" ||
     getHealthItem("cyclecare_fertility_info_visible") === "true";
@@ -1160,7 +1372,9 @@ function CalendarPage() {
       <section className="estimate-card" aria-labelledby="estimate-heading">
         <span className="eyebrow">PATTERN-BASED ESTIMATE</span>
         <h3 id="estimate-heading">Next Period Estimate</h3>
-        {estimate ? (
+        {pregnancyMode ? (
+          <p>Period and fertile-window estimates are paused while Pregnancy mode is on.</p>
+        ) : estimate ? (
           estimate.needsReview ? (
             <div className="estimate-review">
               <p>
@@ -1205,15 +1419,15 @@ function CalendarPage() {
             estimates are based only on the dates you record.
           </p>
         )}
-        <p className="estimate-disclaimer">Predictions are estimates, not guarantees. Cycles can vary naturally; this cannot confirm ovulation or be used as contraception.</p>
-        {estimate && !estimate.needsReview && estimate.isIrregular && fertilityVisible && (
+        {!pregnancyMode && <p className="estimate-disclaimer">Predictions are estimates, not guarantees. Cycles can vary naturally; this cannot confirm ovulation or be used as contraception.</p>}
+        {!pregnancyMode && estimate && !estimate.needsReview && estimate.isIrregular && fertilityVisible && (
           <p>
             Ovulation and fertile-window estimates are not shown because your
             recent cycle lengths vary; a calendar estimate may be especially
             unreliable.
           </p>
         )}
-        {fertilityEstimate && (
+        {!pregnancyMode && fertilityEstimate && (
           <div className="fertility-estimates">
             <h4>Optional ovulation and fertile-window estimates</h4>
             <p>
@@ -1602,7 +1816,9 @@ function RemindersPage({ discreetMode }) {
       const today = localDateString();
       const fired = getFiredReminders();
       const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      const estimate = getCycleEstimate(getPeriodEntries());
+      const estimate = getHealthItem("cyclecare_pregnancy_mode") === "true"
+        ? null
+        : getCycleEstimate(getPeriodEntries());
       const matching = current.filter((reminder) => {
         if (!reminder.enabled || reminder.time !== time || fired[reminder.id] === today) return false;
         if (reminder.id !== "expected-period") return true;
@@ -2453,16 +2669,11 @@ function SettingsPage({
         trackedSymptoms,
         exportedAt: new Date().toISOString(),
       };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `cyclecare-private-data-${localDateString()}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadFile(
+        JSON.stringify(data, null, 2),
+        `cyclecare-private-data-${localDateString()}.json`,
+        "application/json"
+      );
       setMessage("Your data export has been prepared on this device.");
     } catch {
       setMessage("We could not prepare your export. Please try again.");
@@ -2495,38 +2706,17 @@ function SettingsPage({
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      if (
-        !parsed ||
-        !Array.isArray(parsed.periods) ||
-        !Array.isArray(parsed.symptoms)
-      ) {
-        throw new Error("Invalid CycleCare export shape");
-      }
-      const periods = parsed.periods.filter(
-        (entry) =>
-          entry &&
-          parseDateOnly(entry.startDate) &&
-          entry.startDate <= localDateString() &&
-          Number.isInteger(Number(entry.periodLength)) &&
-          Number(entry.periodLength) >= 1 &&
-          Number(entry.periodLength) <= 10
-      );
-      const symptoms = parsed.symptoms.filter(
-        (entry) =>
-          entry &&
-          parseDateOnly(entry.date) &&
-          Array.isArray(entry.symptoms)
-      );
-      if (periods.length !== parsed.periods.length || symptoms.length !== parsed.symptoms.length) {
-        throw new Error("Export contains invalid or unsupported records");
-      }
+      const imported = validateImportData(parsed, {
+        today: localDateString(),
+        availableSymptoms,
+      });
       if (!window.confirm("Replace the current period and symptom records with the valid records in this file?")) return;
-      setHealthItem("cyclecare_periods", JSON.stringify(periods));
-      setHealthItem("cyclecare_symptoms", JSON.stringify(symptoms));
-      setHealthItem("cyclecare_reminders", JSON.stringify(Array.isArray(parsed.reminders) ? parsed.reminders : []));
-      setHealthItem("cyclecare_pregnancy_mode", String(parsed.pregnancyMode === true));
-      setHealthItem("cyclecare_age_group", ["under18", "adult", "prefer-not"].includes(parsed.ageGroup) ? parsed.ageGroup : "adult");
-      setHealthItem("cyclecare_tracked_symptoms", JSON.stringify(Array.isArray(parsed.trackedSymptoms) ? parsed.trackedSymptoms.filter((value) => availableSymptoms.includes(value)) : availableSymptoms));
+      setHealthItem("cyclecare_periods", JSON.stringify(imported.periods));
+      setHealthItem("cyclecare_symptoms", JSON.stringify(imported.symptoms));
+      setHealthItem("cyclecare_reminders", JSON.stringify(imported.reminders));
+      setHealthItem("cyclecare_pregnancy_mode", String(imported.pregnancyMode));
+      setHealthItem("cyclecare_age_group", imported.ageGroup);
+      setHealthItem("cyclecare_tracked_symptoms", JSON.stringify(imported.trackedSymptoms));
       window.dispatchEvent(new Event("cyclecare-data-updated"));
       window.dispatchEvent(new Event("cyclecare-symptoms-updated"));
       setMessage("Import complete. Your browser will refresh the records on affected screens.");
@@ -3004,13 +3194,6 @@ function getCyclePhase(cycleDay, periodLength) {
   return "This date is after the recorded period. The app cannot determine your biological cycle phase.";
 }
 
-function localDateStringForDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function getReminders() {
   try {
     const stored = JSON.parse(getHealthItem("cyclecare_reminders") || "[]");
@@ -3201,109 +3384,6 @@ function getSymptomSummary(records) {
     mostFrequent: frequencies
       .filter((item) => item.count === highestFrequency)
       .map((item) => item.symptom),
-  };
-}
-
-function daysBetween(firstDate, secondDate) {
-  const first = parseDateOnly(firstDate);
-  const second = parseDateOnly(secondDate);
-
-  if (!first || !second) return null;
-
-  return Math.round(
-    (Date.UTC(second.getFullYear(), second.getMonth(), second.getDate()) -
-      Date.UTC(first.getFullYear(), first.getMonth(), first.getDate())) /
-      (1000 * 60 * 60 * 24)
-  );
-}
-
-function parseDateOnly(value) {
-  if (typeof value !== "string") return null;
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-
-  const [, year, month, day] = match.map(Number);
-  const date = new Date(year, month - 1, day);
-
-  return date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-    ? date
-    : null;
-}
-
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function median(values) {
-  const sorted = [...values].sort((first, second) => first - second);
-  const middle = Math.floor(sorted.length / 2);
-
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
-}
-
-function getCycleEstimate(entries, confirmedGap = "") {
-  const sortedEntries = [...entries].sort((a, b) =>
-    a.startDate.localeCompare(b.startDate)
-  );
-
-  if (sortedEntries.length < 3) return null;
-
-  const intervals = sortedEntries
-    .slice(1)
-    .map((entry, index) =>
-      ({
-        days: daysBetween(sortedEntries[index].startDate, entry.startDate),
-        startDate: sortedEntries[index].startDate,
-        endDate: entry.startDate,
-      })
-    )
-    .filter((interval) => interval.days > 0)
-    .slice(-6);
-
-  if (intervals.length < 2) return null;
-
-  const intervalLengths = intervals.map((interval) => interval.days);
-  const medianCycleLength = Math.round(median(intervalLengths));
-  const latestInterval = intervals[intervals.length - 1];
-  const previousIntervals = intervalLengths.slice(0, -1);
-  const previousMedian = median(previousIntervals);
-  const hasUnusualGap =
-    latestInterval.days > previousMedian + 7;
-  const gapKey = `${latestInterval.startDate}:${latestInterval.endDate}`;
-
-  if (hasUnusualGap && confirmedGap !== gapKey) {
-    return { needsReview: true, gapKey };
-  }
-
-  const intervalSpread =
-    Math.max(...intervalLengths) - Math.min(...intervalLengths);
-  const isIrregular = intervalSpread > 7;
-  const largestDeviation = Math.ceil(
-    Math.max(...intervalLengths.map((interval) => Math.abs(interval - medianCycleLength)))
-  );
-  const spreadDays = isIrregular
-    ? Math.max(7, largestDeviation)
-    : Math.max(2, largestDeviation);
-  const latestStart = parseDateOnly(
-    sortedEntries[sortedEntries.length - 1].startDate
-  );
-  const nextStart = addDays(latestStart, medianCycleLength);
-
-  return {
-    cyclesUsed: intervals.length,
-    medianCycleLength,
-    isIrregular,
-    spreadDays,
-    nextStart,
-    windowStart: addDays(nextStart, -spreadDays),
-    windowEnd: addDays(nextStart, spreadDays),
   };
 }
 

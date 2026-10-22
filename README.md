@@ -1,91 +1,107 @@
 # CycleCare
 
-CycleCare is a browser-based menstrual health companion for privately recording period starts and symptom check-ins, reviewing a calendar, and reading educational material. It is a privacy-conscious client-side application: it has no backend, account system, or networked health-record service.
+CycleCare is an account-free menstrual health companion for recording period
+starts and symptom check-ins, reviewing personal patterns, and finding
+educational and care information. Health records stay in the current browser
+profile; the app does not send them to a CycleCare server.
 
 ## Features
 
-- Period start logging with a 1–10 day duration and duplicate-date prevention.
-- Calendar view of recorded period days and a pattern-based next-period window.
-- Symptom check-ins with optional notes, saved-history display, and frequency insights.
-- Eight educational articles with client-side keyword search, category filters, and source links.
-- A privacy settings page with persistent Discreet Mode, local JSON export, and confirmation-based deletion of CycleCare health records.
-- Responsive layouts, visible keyboard focus styles, reduced-motion support, and labelled controls.
+- Period start and duration logging, flow observations, and an editable calendar.
+- A clearly labelled estimated period window based on the median of up to six
+  recent recorded cycle gaps, with uncertainty messaging and a possible missed
+  log review prompt.
+- Symptom and mood check-ins, recent record summaries, cycle insights, and
+  cautious, record-based care guidance.
+- Offline keyword matching for a finite FAQ, sourced health lessons and
+  articles, English/Hindi content in selected areas, and optional read-aloud.
+- Opt-in reminders while the Reminders page is open and optional pregnancy
+  information mode.
+- A warm ivory and blush botanical theme, responsive desktop/mobile preview,
+  Discreet Mode, text-size and contrast preferences, and optional encrypted
+  local storage.
+- JSON and CSV exports, JSON import, and confirmation-based deletion of
+  CycleCare data from the current browser.
 
-## Technology
+CycleCare does not diagnose, confirm ovulation, provide contraception advice,
+monitor emergencies, or replace a healthcare professional. Estimates are not
+guaranteed. Food and drink suggestions are general comfort ideas, not
+treatments.
 
-- React 19, rendered with React DOM
-- Vite 8 and `@vitejs/plugin-react`
+## Technology and architecture
+
+- React 19 and Vite 8
 - `lucide-react` icons
 - Oxlint
+- Node's built-in test runner for cycle/date calculation tests
 
-`react-router-dom` and `recharts` are installed dependencies, but the current application does not import or use them. Navigation is component state rather than URL routing, and symptom insights use CSS rather than a chart library.
+`src/main.jsx` mounts `App` from `src/App.jsx`. The main app currently contains
+the shell, pages, persistence operations, and content; reusable date and cycle
+estimate functions are in `src/utils/cycle.js`, with tests in
+`src/utils/cycle.test.js`. Learning content is also maintained in
+`src/content/healthLessons.js`. Styling is in `src/App.css` and `src/index.css`.
+Navigation is component-state based; there is no configured router or backend.
 
-## Architecture
+`react-router-dom` and `recharts` are installed but not used by the current
+application.
 
-`src/main.jsx` mounts `App` in React Strict Mode. `src/App.jsx` contains the stateful shell, pages, article content, storage helpers, and date/cycle helpers. `src/App.css` contains application, responsive, and accessibility styling; `src/index.css` supplies the global reset. `index.html` provides Vite's root element, viewport metadata, favicon, and document title.
+## Privacy and storage
 
-The sidebar changes an in-memory active-page value. The Overview page dispatches a `cyclecare-data-updated` browser event after period saves; Calendar listens for it and refreshes. Symptoms use a separate `cyclecare-symptoms-updated` event. The native `storage` event synchronizes relevant changes from other browser tabs.
+Without the optional vault, records are stored in browser `localStorage`, which
+is **not encrypted** and may be accessible to someone with access to the same
+browser profile or developer tools. Clearing browser data can erase records.
+Discreet Mode changes what is shown on screen; it is not a security boundary.
 
-For fuller design and data-flow detail, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The optional four-digit PIN vault uses Web Crypto AES-GCM with a key derived
+using PBKDF2/SHA-256. The PIN is not stored and cannot be recovered. A short PIN
+can be guessed offline if someone obtains the browser storage; this is not
+device security. The vault requires a secure context such as HTTPS or localhost.
 
-## Local data storage and privacy
+Exports contain sensitive health information; keep exported files private.
+Import validates record structure, dates, and reminder times before replacing
+data, after confirmation. The application has no account, sync, analytics, or
+health-record transmission service.
 
-CycleCare stores only the following keys in the current browser origin's `localStorage`:
+## Run locally
 
-| Key | Format |
-| --- | --- |
-| `cyclecare_periods` | JSON array of `{ "startDate": "YYYY-MM-DD", "periodLength": number }`. Reads accept only real, non-future dates, unique start dates, and integer durations from 1 through 10. |
-| `cyclecare_symptoms` | JSON array of `{ "id": string, "date": "YYYY-MM-DD", "symptoms": string[], "note": string }`. Missing legacy IDs receive a display-only `legacy-<index>` value when read. |
-| `cyclecare_discreet_mode` | String boolean: `"true"` enables the visual Discreet Mode. |
-
-Malformed JSON and invalid records are treated as unavailable rather than crashing. Data stays in the browser profile and is not automatically sent to a CycleCare server. Local storage is **not encrypted**, can be accessed by someone using the same browser profile/device or developer tools, and can be erased when browser/site data is cleared. Discreet Mode only hides selected Overview details on screen; it does not secure stored records. Export a copy before clearing data or running destructive tests.
-
-## Cycle estimate
-
-The calendar requires at least three recorded period starts. It calculates the day count between consecutive starts, keeps only plausible intervals from 20 to 45 days, and requires at least two such intervals. It rounds their arithmetic mean to a whole-day cycle length, adds that value to the latest start date, and displays a five-day window from two days before to two days after that date.
-
-Dates are parsed as date-only local calendar dates and intervals use UTC calendar-day arithmetic to avoid daylight-saving-time hour changes. The prediction is an estimate, not a guarantee; it cannot confirm ovulation and must not be used as contraception or medical advice.
-
-## Setup
-
-Prerequisite: a current Node.js version supported by Vite 8.
+Use a current Node.js version supported by Vite 8.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Other verified package scripts are:
+Available checks and commands:
 
 ```bash
+npm test
 npm run lint
 npm run build
 npm run preview
 ```
 
-`vite.config.js` does not set a custom `base`, so the build assumes deployment at the site root. Configure `base` before hosting beneath a subpath.
+The Vite build uses the site root by default. Configure `base` before deploying
+under a subpath.
 
-## Testing and verification
+## Cycle estimates
 
-There is no automated test framework or test script configured in this repository. Adding one solely for a small helper test set would require new tooling and has not been done for this documentation-focused pass.
+The estimate requires at least three distinct, valid period start dates (two
+complete recorded gaps). It uses the median of up to the six most recent gaps,
+derives a range from observed variation, and asks the user to review a possible
+missing log when the latest gap is unusually long compared with earlier gaps.
+The calendar and dashboard distinguish an estimate from recorded data.
 
-On 22 October 2026, these checks ran successfully:
+The date-only helpers validate calendar dates and use UTC day arithmetic for
+intervals, avoiding daylight-saving-hour differences. An estimate cannot
+confirm ovulation, diagnose a condition, or guide contraception decisions.
 
-```text
-npm run lint   # oxlint completed with exit code 0
-npm run build  # vite v8.3.5 completed with exit code 0
-```
+## Limitations and review
 
-No browser automation or manual browser session was run. Use [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) before submission.
-
-## Medical disclaimer
-
-CycleCare is an informational record-keeping and education tool. It does not diagnose conditions, provide individualized medical advice, confirm ovulation, or replace a qualified healthcare professional. Seek professional care for concerning, severe, persistent, or life-disrupting symptoms.
-
-## Limitations and future improvements
-
-- No authentication, encryption, PIN, backup sync, or cross-device data sharing exists.
-- Page navigation is not URL-addressable; refreshing returns to Overview.
-- The estimator uses a simple average of valid intervals and does not model individual clinical factors.
-- Article links lead to third-party sources and require network access when opened.
-- Future work could extract pure helpers into a testable module, add an automated test runner, add accessible URL routing, and offer opt-in secure storage/sync only after an appropriate privacy review.
+- Reminders are checked while the Reminders page is open; background delivery
+  after the app closes is not supported.
+- Hindi translation is partial. Ask is an offline FAQ matcher, not an AI
+  assistant or a general medical question service.
+- Health guidance and translations need ongoing clinical and local review.
+- Browser storage, device accessibility, and notification support vary.
+- Continue manual keyboard, screen-reader, mobile, and health-content testing
+  using [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).

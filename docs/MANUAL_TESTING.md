@@ -17,6 +17,9 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 - [ ] Estimate variability: use cycles whose longest and shortest intervals differ by more than seven days; verify the irregular tracking label, wider range, fertility estimate suppression, and disclaimer. Make the latest gap more than seven days longer than the earlier-interval median; verify the missed-log review appears and confirmation is required before the estimate is shown.
 - [ ] Pregnancy mode: enable only after the confirmation checkbox; verify cycle estimates pause, approximate timing and external weekly-source link display, then turn off and verify records remain.
 - [ ] Insights: verify average and min/max recorded intervals, recent chart, symptom frequency, and cross-cycle co-occurrence only after sufficient logged cycles. Confirm copy avoids claiming causation or diagnosis.
+- [ ] Overview dashboard: verify recorded history is labelled as records, the next period range is labelled as an estimate, and an unusually long latest gap requests review instead of showing an estimate. Verify pregnancy mode pauses the estimate and Discreet Mode hides personal cycle dates.
+- [ ] Recent check-ins: add multiple symptom and mood entries, return to Overview, and verify the three most recent records appear in date order with a route to symptom logging. Verify the empty state before any check-ins and that Discreet Mode hides record details.
+- [ ] Care prompts: create a record that triggers care guidance, verify only logged facts are shown on Overview, and use the link to open the full care page and named source.
 
 ## Logging and care guidance
 
@@ -39,8 +42,9 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 ## Accessibility, layout, and validation
 
 - [ ] Viewport: check 360 px, 390 px, 700 px, and desktop widths for clipping, horizontal overflow, readable wrapping, and usable calendar controls.
+- [ ] Self-care cards: verify all drink/food illustrations have meaningful accessible names, decorative flowers are ignored by screen readers, and preparation guides work by keyboard and touch. Confirm suggestions make no treatment or guaranteed-relief claims.
 - [ ] Accessibility settings: verify small/default/large text and high contrast persist after navigation/reload. Confirm focus indicators, labels, accessible names, and keyboard operation for navigation, forms, calendar days, dialogs, and controls.
 - [ ] Reduced motion: enable the OS/browser preference and confirm interactions remain usable.
-- [ ] Run `npm run build` and `npm run lint`; record any warnings and browser console errors. No automated test runner is currently configured.
+- [ ] Run `npm test`, `npm run build`, and `npm run lint`; record any warnings and browser console errors.
 
 Record browser/version, viewport size, disposable test data, and console errors with each finding.
