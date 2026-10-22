@@ -25,8 +25,10 @@ import {
   Baby,
   Globe2,
   LockKeyhole,
+  Laptop,
   Upload,
   Download,
+  Smartphone,
   Volume2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
@@ -63,6 +65,9 @@ const navigation = [
 function App() {
   const [activePage, setActivePage] = useState("Overview");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [devicePreview, setDevicePreview] = useState(
+    () => window.matchMedia("(max-width: 700px)").matches ? "mobile" : "desktop"
+  );
   const [symptomEditRecord, setSymptomEditRecord] = useState(null);
   const [discreetMode, setDiscreetMode] = useState(() => getDiscreetMode());
   const [language, setLanguage] = useState(
@@ -187,7 +192,7 @@ function App() {
   }
 
   return (
-    <div className={`app-container ${language === "hi" ? "language-hi" : ""}`}>
+    <div className={`app-container ${language === "hi" ? "language-hi" : ""} ${devicePreview === "mobile" ? "device-preview-mobile" : ""}`}>
       {vaultLocked ? (
         <VaultUnlockDialog onUnlock={unlockVault} />
       ) : (
@@ -267,17 +272,40 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
-          <button
-            className="menu-button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={22} />
-          </button>
+          <div className="topbar-heading">
+            <button
+              className="menu-button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
 
-          <div>
-            <p className="topbar-date">YOUR PERSONAL WELLNESS SPACE</p>
-            <h2>{activePage}</h2>
+            <div>
+              <p className="topbar-date">YOUR PERSONAL WELLNESS SPACE</p>
+              <h2>{activePage}</h2>
+            </div>
+          </div>
+
+          <div className="device-switcher" role="group" aria-label="Device preview">
+            <button
+              type="button"
+              className={devicePreview === "desktop" ? "device-switch-active" : ""}
+              aria-pressed={devicePreview === "desktop"}
+              onClick={() => setDevicePreview("desktop")}
+            >
+              <Laptop size={17} />
+              <span>Desktop</span>
+            </button>
+            <button
+              type="button"
+              className={devicePreview === "mobile" ? "device-switch-active" : ""}
+              aria-pressed={devicePreview === "mobile"}
+              onClick={() => setDevicePreview("mobile")}
+            >
+              <Smartphone size={17} />
+              <span>Mobile</span>
+            </button>
           </div>
 
           <div className="profile-badge">
@@ -1742,63 +1770,69 @@ function SymptomsPage({ editRecord, onEditComplete }) {
         medical condition.
       </p>
 
-      <form onSubmit={saveSymptoms}>
-        <label className="field-label" htmlFor="symptom-entry-date">Check-in date</label>
-        <input
-          id="symptom-entry-date"
-          type="date"
-          value={entryDate}
-          max={localDateString()}
-          onChange={(event) => setEntryDate(event.target.value)}
-          required
-        />
-        <h3 className="form-section-title">
-          What are you experiencing?
-        </h3>
-
-        <div className="symptom-options">
-          {symptoms.map((symptom) => (
-            <button
-              type="button"
-              key={symptom}
-              className={`symptom-option ${
-                selectedSymptoms.includes(symptom) ? "selected" : ""
-              }`}
-              onClick={() => toggleSymptom(symptom)}
-              aria-pressed={selectedSymptoms.includes(symptom)}
-            >
-              {symptom}
-            </button>
-          ))}
+      <form className="symptoms-form" onSubmit={saveSymptoms}>
+        <div className="symptom-form-section symptom-date-section">
+          <label className="field-label" htmlFor="symptom-entry-date">Check-in date</label>
+          <input
+            id="symptom-entry-date"
+            type="date"
+            value={entryDate}
+            max={localDateString()}
+            onChange={(event) => setEntryDate(event.target.value)}
+            required
+          />
         </div>
+        <section className="symptom-form-section" aria-labelledby="symptom-selection-heading">
+          <h3 className="form-section-title" id="symptom-selection-heading">
+            What are you experiencing?
+          </h3>
+          <p className="symptom-section-hint">Choose any that feel relevant today.</p>
+          <div className="symptom-options">
+            {symptoms.map((symptom) => (
+              <button
+                type="button"
+                key={symptom}
+                className={`symptom-option ${
+                  selectedSymptoms.includes(symptom) ? "selected" : ""
+                }`}
+                onClick={() => toggleSymptom(symptom)}
+                aria-pressed={selectedSymptoms.includes(symptom)}
+              >
+                {symptom}
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <label className="field-label" htmlFor="pain-level">
-          Pain level: {pain} out of 10
-        </label>
-        <input
-          id="pain-level"
-          type="range"
-          min="0"
-          max="10"
-          value={pain}
-          onChange={(event) => setPain(event.target.value)}
-        />
-        <label className="check-field">
+        <section className="symptom-form-section" aria-labelledby="pain-heading">
+          <label className="field-label" htmlFor="pain-level" id="pain-heading">
+            Pain level <span>{pain} / 10</span>
+          </label>
           <input
-            type="checkbox"
-            checked={painStopsActivities}
-            onChange={(event) => setPainStopsActivities(event.target.checked)}
+            id="pain-level"
+            type="range"
+            min="0"
+            max="10"
+            value={pain}
+            onChange={(event) => setPain(event.target.value)}
           />
-          Pain stopped me doing usual activities
-        </label>
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={bleedingBetweenPeriods}
-            onChange={(event) => setBleedingBetweenPeriods(event.target.checked)}
-          />
-          I noticed bleeding between periods or after sex
-        </label>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={painStopsActivities}
+              onChange={(event) => setPainStopsActivities(event.target.checked)}
+            />
+            Pain stopped me doing usual activities
+          </label>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={bleedingBetweenPeriods}
+              onChange={(event) => setBleedingBetweenPeriods(event.target.checked)}
+            />
+            I noticed bleeding between periods or after sex
+          </label>
+        </section>
         <fieldset className="urgent-symptom-questions">
           <legend>Urgent symptoms (only select if this applies now)</legend>
           <label className="check-field">
@@ -1815,69 +1849,79 @@ function SymptomsPage({ editRecord, onEditComplete }) {
           </label>
         </fieldset>
 
-        <label className="field-label" htmlFor="mood">Mood today</label>
-        <select id="mood" value={mood} onChange={(event) => setMood(event.target.value)}>
-          <option value="very-low">Very low</option>
-          <option value="low">Low</option>
-          <option value="okay">Okay</option>
-          <option value="good">Good</option>
-          <option value="very-good">Very good</option>
-        </select>
+        <section className="symptom-form-section symptom-wellbeing-fields">
+          <div className="symptom-field">
+            <label className="field-label" htmlFor="mood">Mood today</label>
+            <select id="mood" value={mood} onChange={(event) => setMood(event.target.value)}>
+              <option value="very-low">Very low</option>
+              <option value="low">Low</option>
+              <option value="okay">Okay</option>
+              <option value="good">Good</option>
+              <option value="very-good">Very good</option>
+            </select>
+          </div>
+          <div className="symptom-field">
+            <label className="field-label" htmlFor="energy">Energy today</label>
+            <select id="energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
+              <option value="low">Low</option>
+              <option value="usual">Usual</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div className="symptom-field">
+            <label className="field-label" htmlFor="sleep-hours">Sleep (hours, optional)</label>
+            <input
+              id="sleep-hours"
+              type="number"
+              min="0"
+              max="24"
+              step="0.5"
+              value={sleepHours}
+              onChange={(event) => setSleepHours(event.target.value)}
+            />
+          </div>
+          <div className="symptom-field symptom-field-wide">
+            <label className="field-label" htmlFor="medicines">Medicines taken (optional)</label>
+            <input
+              id="medicines"
+              type="text"
+              value={medicines}
+              maxLength={250}
+              onChange={(event) => setMedicines(event.target.value)}
+              placeholder="Only include what you choose to record"
+            />
+          </div>
+        </section>
 
-        <label className="field-label" htmlFor="energy">Energy today</label>
-        <select id="energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
-          <option value="low">Low</option>
-          <option value="usual">Usual</option>
-          <option value="high">High</option>
-        </select>
-
-        <label className="field-label" htmlFor="sleep-hours">Sleep (hours, optional)</label>
-        <input
-          id="sleep-hours"
-          type="number"
-          min="0"
-          max="24"
-          step="0.5"
-          value={sleepHours}
-          onChange={(event) => setSleepHours(event.target.value)}
-        />
-
-        <label className="field-label" htmlFor="medicines">Medicines taken (optional)</label>
-        <input
-          id="medicines"
-          type="text"
-          value={medicines}
-          maxLength={250}
-          onChange={(event) => setMedicines(event.target.value)}
-          placeholder="Only include what you choose to record"
-        />
-
-        <label className="field-label" htmlFor="symptom-note">
-          Additional notes (optional)
-        </label>
-
-        <textarea
-          id="symptom-note"
-          className="notes-input"
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="How have you been feeling?"
-          rows={4}
-          maxLength={1000}
-        />
-
-        <label className="check-field wellbeing-check">
-          <input
-            type="checkbox"
-            checked={selfHarmConcern}
-            onChange={(event) => setSelfHarmConcern(event.target.checked)}
+        <section className="symptom-form-section">
+          <label className="field-label" htmlFor="symptom-note">
+            Additional notes <span>(optional)</span>
+          </label>
+          <textarea
+            id="symptom-note"
+            className="notes-input"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="How have you been feeling?"
+            rows={4}
+            maxLength={1000}
           />
-          I have thoughts about harming myself and would like support
-        </label>
-        <p className="privacy-hint">
-          This is stored only in this browser. If you might act on these
-          thoughts or are in immediate danger, contact emergency help now.
-        </p>
+        </section>
+
+        <section className="symptom-wellbeing-prompt">
+          <label className="check-field wellbeing-check">
+            <input
+              type="checkbox"
+              checked={selfHarmConcern}
+              onChange={(event) => setSelfHarmConcern(event.target.checked)}
+            />
+            I have thoughts about harming myself and would like support
+          </label>
+          <p className="privacy-hint">
+            This is stored only in this browser. If you might act on these
+            thoughts or are in immediate danger, contact emergency help now.
+          </p>
+        </section>
 
         <button type="submit" className="primary-button">
           {editRecord ? "Update check-in" : "Save check-in"}
