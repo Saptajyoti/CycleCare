@@ -233,13 +233,6 @@ a:focus-visible {
   gap: 13px;
 }
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.language-switcher,
 .device-switcher {
   display: inline-flex;
   align-items: center;
@@ -251,7 +244,6 @@ a:focus-visible {
   box-shadow: 0 4px 14px rgba(95, 61, 78, 0.04);
 }
 
-.language-switcher button,
 .device-switcher button {
   display: inline-flex;
   min-height: 40px !important;
@@ -268,13 +260,11 @@ a:focus-visible {
   transition: background 0.18s ease, color 0.18s ease;
 }
 
-.language-switcher button:hover,
 .device-switcher button:hover {
   background: #fff5f8;
   color: #a9486b;
 }
 
-.language-switcher button.language-switch-active,
 .device-switcher button.device-switch-active {
   background: #fcecf2;
   color: #a9486b;
@@ -1612,14 +1602,10 @@ button:disabled {
     grid-row: 1;
   }
 
-  .topbar-actions {
+  .device-switcher {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: end;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
   }
 
   .profile-badge {
@@ -1627,7 +1613,6 @@ button:disabled {
     grid-row: 1;
   }
 
-  .language-switcher button,
   .device-switcher button {
     padding: 0 10px;
   }
@@ -2417,14 +2402,10 @@ button:disabled {
     background: white;
   }
 
-  .device-preview-mobile .topbar-actions {
+  .device-preview-mobile .device-switcher {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: end;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
   }
 
   .device-preview-mobile .profile-badge {

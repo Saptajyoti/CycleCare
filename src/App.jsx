@@ -287,46 +287,25 @@ function App() {
             </div>
           </div>
 
-          <div className="topbar-actions">
-            <div className="language-switcher" role="group" aria-label="Select language">
-              <button
-                type="button"
-                className={language === "en" ? "language-switch-active" : ""}
-                aria-pressed={language === "en"}
-                onClick={() => chooseLanguage("en")}
-              >
-                English
-              </button>
-              <button
-                type="button"
-                className={language === "hi" ? "language-switch-active" : ""}
-                aria-pressed={language === "hi"}
-                onClick={() => chooseLanguage("hi")}
-              >
-                हिंदी
-              </button>
-            </div>
-
-            <div className="device-switcher" role="group" aria-label="Device preview">
-              <button
-                type="button"
-                className={devicePreview === "desktop" ? "device-switch-active" : ""}
-                aria-pressed={devicePreview === "desktop"}
-                onClick={() => setDevicePreview("desktop")}
-              >
-                <Laptop size={17} />
-                <span>Desktop</span>
-              </button>
-              <button
-                type="button"
-                className={devicePreview === "mobile" ? "device-switch-active" : ""}
-                aria-pressed={devicePreview === "mobile"}
-                onClick={() => setDevicePreview("mobile")}
-              >
-                <Smartphone size={17} />
-                <span>Mobile</span>
-              </button>
-            </div>
+          <div className="device-switcher" role="group" aria-label="Device preview">
+            <button
+              type="button"
+              className={devicePreview === "desktop" ? "device-switch-active" : ""}
+              aria-pressed={devicePreview === "desktop"}
+              onClick={() => setDevicePreview("desktop")}
+            >
+              <Laptop size={17} />
+              <span>Desktop</span>
+            </button>
+            <button
+              type="button"
+              className={devicePreview === "mobile" ? "device-switch-active" : ""}
+              aria-pressed={devicePreview === "mobile"}
+              onClick={() => setDevicePreview("mobile")}
+            >
+              <Smartphone size={17} />
+              <span>Mobile</span>
+            </button>
           </div>
 
           <div className="profile-badge">
