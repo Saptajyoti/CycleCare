@@ -30,7 +30,7 @@ Insights show averages, ranges, up to twelve recent logged cycle intervals, symp
 
 The care page includes an urgent-help warning, links to NHS guidance, India eSanjeevani information, and a printable visit summary. Symptom check-ins also show urgent-support guidance for selected warning signs; the wellbeing prompt links to Tele-MANAS. Users are told not to wait for the app during an emergency. Emergency-service availability and clinical guidance should be checked locally and periodically; the app cannot contact services for the user.
 
-Learn combines the existing article collection with separately maintained English/Hindi PCOS and first-period lessons in `src/content/healthLessons.js`. Sources are linked with the lessons. Read-aloud uses browser speech synthesis when available. Ask is an offline keyword match against a finite FAQ, not an AI assistant or a general-purpose question-answer service; it displays a fallback when there is no match.
+Learn combines the existing article collection with separately maintained English/Hindi lessons in `src/content/healthLessons.js`. Topics include PCOS, first periods, heavy bleeding, irregular timing, period pain, missed periods, and endometriosis. Each added health lesson links to its named NHS source. Read-aloud uses browser speech synthesis when available. Ask is an offline keyword match against a finite FAQ, not an AI assistant or a general-purpose question-answer service; it displays a fallback when there is no match.
 
 ## Reminders and pregnancy information
 
