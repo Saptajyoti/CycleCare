@@ -313,6 +313,7 @@ function App() {
           </div>
         </header>
 
+        <div className="page-transition" key={activePage}>
         {activePage === "Overview" ? (
           <Dashboard discreetMode={discreetMode} />
         ) : activePage === "My Calendar" ? (
@@ -348,6 +349,7 @@ function App() {
             onPregnancyVisibilityChange={updatePregnancyVisibility}
           />
         )}
+        </div>
       </main>
       </>
       )}
@@ -863,7 +865,7 @@ function CalendarPage() {
         </button>
       </div>
 
-      <div className="calendar-grid">
+      <div className="calendar-grid" key={`${year}-${month}`} aria-live="polite">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
           (day) => (
             <div key={day} className="calendar-weekday">
