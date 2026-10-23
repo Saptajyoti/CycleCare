@@ -705,11 +705,9 @@ function Dashboard({ discreetMode }) {
           </p>
         </div>
 
-        <div className="welcome-decoration">
-          <div className="decoration-circle circle-one" />
-          <div className="decoration-circle circle-two" />
-          <Heart size={62} strokeWidth={1.1} />
-          <span>care for you</span>
+        <div className="welcome-logo-watermark">
+          <img src="/unity-care-logo-theme.png" alt="Unity Care" />
+          <span>Care for you, every cycle.</span>
         </div>
         <FloralDecoration className="floral-decoration-hero" />
         <FloralDecoration className="floral-decoration-hero-secondary" />

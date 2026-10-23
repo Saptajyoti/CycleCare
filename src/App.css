@@ -3275,6 +3275,36 @@ body {
   .welcome-section::before { width: 150px; height: 140px; opacity: 0.42; }
 }
 
+.welcome-section .welcome-logo-watermark {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: clamp(135px, 17vw, 180px);  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.welcome-logo-watermark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.18;
+}
+.welcome-logo-watermark span {
+  color: #a94d55;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+}
+@media (max-width: 700px) {
+  .welcome-section .welcome-logo-watermark { width: 115px; gap: 3px; }  .welcome-logo-watermark span { font-size: 10px; }
+}
+
 /* Keep decorative florals contained within their own cards. */
 .section-heading {
   position: relative;
