@@ -694,9 +694,9 @@ function Dashboard({ discreetMode }) {
           </span>
 
           <h1>
-            Period care,
+            A little more in tune
             <br />
-            <span>made personal.</span>
+            with <span>yourself.</span>
           </h1>
 
           <p>
@@ -711,8 +711,8 @@ function Dashboard({ discreetMode }) {
         </div>
 
         <div className="welcome-logo-watermark">
-          <img src="/unity-care-logo-theme.png" alt="Unity Care" />
-          <span>Care for you, every cycle.</span>
+          <img src="/cyclecare-letter-c.png" alt="" />
+          <span className="welcome-brand-motto">Care for you, every cycle.</span>
         </div>
         <FloralDecoration className="floral-decoration-hero" />
         <FloralDecoration className="floral-decoration-hero-secondary" />
