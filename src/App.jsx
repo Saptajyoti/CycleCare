@@ -687,22 +687,27 @@ function Dashboard({ discreetMode }) {
   return (
     <>
       <section className="welcome-section">
-        <div>
+        <div className="welcome-copy">
           <span className="eyebrow">
             <Sparkles size={15} />
             YOUR JOURNEY, YOUR PACE
           </span>
 
           <h1>
-            A little more in tune
+            Period care,
             <br />
-            with <span>yourself.</span>
+            <span>made personal.</span>
           </h1>
 
           <p>
-            Get to know your cycle, understand your patterns, and
-            make space for yourself.
+            Understand your cycle, follow how you feel, and find supportive
+            care that fits your day.
           </p>
+
+          <div className="welcome-highlights" aria-label="CycleCare benefits">
+            <span><Heart size={15} />Care that centers you</span>
+            <span><ShieldCheck size={15} />Private by design</span>
+          </div>
         </div>
 
         <div className="welcome-logo-watermark">
@@ -3615,4 +3620,3 @@ function localDateString() {
 }
 
 export default App;
-
