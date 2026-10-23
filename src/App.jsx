@@ -32,6 +32,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import heroIllustration from "./assets/cyclecare-hero.webp";
 
 import "./App.css";
 
@@ -578,29 +579,34 @@ function Dashboard({ discreetMode }) {
   return (
     <>
       <section className="welcome-section">
-        <div>
+        <div className="welcome-copy">
           <span className="eyebrow">
             <Sparkles size={15} />
             YOUR JOURNEY, YOUR PACE
           </span>
 
           <h1>
-            A little more in tune
+            Period care,
             <br />
-            with <span>yourself.</span>
+            <span>made personal.</span>
           </h1>
 
           <p>
-            Get to know your cycle, understand your patterns, and
-            make space for yourself.
+            Understand your cycle, follow how you feel, and find supportive
+            care that fits your day.
           </p>
+
+          <div className="welcome-highlights" aria-label="CycleCare benefits">
+            <span><Heart size={15} />Care that centers you</span>
+            <span><ShieldCheck size={15} />Private by design</span>
+          </div>
         </div>
 
-        <div className="welcome-decoration">
-          <div className="decoration-circle circle-one" />
-          <div className="decoration-circle circle-two" />
-          <Heart size={62} strokeWidth={1.1} />
-          <span>care for you</span>
+        <div className="welcome-illustration">
+          <img
+            src={heroIllustration}
+            alt="Illustration of a woman taking a quiet moment to care for herself"
+          />
         </div>
         <FloralDecoration className="floral-decoration-hero" />
         <FloralDecoration className="floral-decoration-hero-secondary" />
@@ -3507,4 +3513,3 @@ function localDateString() {
 }
 
 export default App;
-
