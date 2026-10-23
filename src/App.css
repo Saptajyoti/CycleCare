@@ -3481,8 +3481,7 @@ body {
 }
 .calendar-day-editor {
   position: relative;
-  overflow: visible;
-  border-color: #e8d3dd;
+  overflow: hidden;  border-color: #e8d3dd;
   border-radius: 20px;
   background: linear-gradient(145deg, #fff 0%, #fff8fb 100%);
   box-shadow: 0 14px 34px rgba(95, 61, 78, 0.09);
@@ -3604,8 +3603,7 @@ body {
 }
 
 .page-card:has(.animated-select-menu) {
-  overflow: visible;
-}
+  overflow: hidden;}
 
 .animated-select-trigger {
   display: flex;
@@ -3780,4 +3778,69 @@ body {
   .sidebar .nav-item::before {
     transition-duration: 0.01ms;
   }
+}/* Transparent flower-C logo for the CycleCare brand area. */
+.cyclecare-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.cyclecare-logo-mark {
+  display: block;
+  flex: 0 0 auto;
+  height: var(--cyclecare-logo-size);
+}
+
+.cyclecare-logo-mark img {
+  display: block;
+  width: auto;
+  height: 100%;
+}
+
+.cyclecare-logo-wordmark {
+  color: #712b4d;
+  font-size: 23px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+}
+
+.brand {
+  width: 100%;
+  min-height: 62px;
+  padding: 8px 10px;
+  border: 1px solid #e9dfe5;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.brand-home {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.brand:hover { background: #fff; }
+.brand-home:hover { transform: translateY(-1px); }
+.brand-home:focus-visible { box-shadow: var(--focus-ring); }
+.brand .cyclecare-logo { max-width: calc(100% - 32px); }
+
+@media (max-width: 360px) {
+  .brand .cyclecare-logo-wordmark { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cyclecare-logo-mark { animation: cyclecare-logo-appear 300ms var(--motion-ease) both; }
+}
+
+@keyframes cyclecare-logo-appear {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
 }

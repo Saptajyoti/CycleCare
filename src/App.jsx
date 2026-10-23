@@ -33,6 +33,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import { CycleCareLogo } from "./components/CycleCareLogo";
 
 import "./App.css";
 
@@ -307,13 +308,13 @@ function App() {
       <>
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
-          <div className="brand-icon">
-            {discreetMode ? <BookOpen size={23} /> : <Heart size={23} />}
-          </div>
-
-          <span>
-            {discreetMode ? "Diary" : <>cyclecare<span className="brand-dot">.</span></>}
-          </span>
+          <button className="brand-home" type="button" onClick={() => navigateTo("Overview")} aria-label={discreetMode ? "Diary home" : "CycleCare home"}>
+            {discreetMode ? (
+              <><span className="brand-icon"><BookOpen size={23} /></span><span>Diary</span></>
+            ) : (
+              <CycleCareLogo size={44} showWordmark decorative />
+            )}
+          </button>
 
           <button
             className="close-menu"
