@@ -31,6 +31,7 @@ import {
   Download,
   Smartphone,
   Volume2,
+  Trash2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -64,7 +65,7 @@ const navigation = [
   { name: "Pregnancy", icon: Baby },
 ];
 
-function AnimatedSelect({ id, value, onChange, children }) {
+function AnimatedSelect({ id, value, onChange, children, className = "" }) {
   const [open, setOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -132,7 +133,7 @@ function AnimatedSelect({ id, value, onChange, children }) {
   }
 
   return (
-    <div className="animated-select" ref={rootRef}>
+    <div className={`animated-select ${className}`.trim()} ref={rootRef}>
       <button
         id={id}
         type="button"
@@ -170,6 +171,28 @@ function AnimatedSelect({ id, value, onChange, children }) {
   );
 }
 
+function AnimatedTimeSelect({ id, value, onChange }) {
+  const intervals = Array.from({ length: 48 }, (_, index) => {
+    const hours = String(Math.floor(index / 2)).padStart(2, "0");
+    const minutes = String((index % 2) * 30).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  });
+  const options = intervals.includes(value) ? intervals : [value, ...intervals];
+
+  return (
+    <AnimatedSelect id={id} value={value} onChange={onChange} className="animated-time-select">
+      {options.map((time) => {
+        const [hours, minutes] = time.split(":").map(Number);
+        const label = new Date(2000, 0, 1, hours, minutes).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        return <option key={time} value={time}>{label}</option>;
+      })}
+    </AnimatedSelect>
+  );
+}
+
 
 function App() {
   const [activePage, setActivePage] = useState("Overview");
@@ -177,8 +200,15 @@ function App() {
   const [devicePreview, setDevicePreview] = useState(
     () => window.matchMedia("(max-width: 700px)").matches ? "mobile" : "desktop"
   );
+  const [devicePreviewTransitioning, setDevicePreviewTransitioning] = useState(false);
+  const devicePreviewTimer = useRef(null);
+  const [vaultUnlocking, setVaultUnlocking] = useState(false);
+  const vaultUnlockTimer = useRef(null);
   const [symptomEditRecord, setSymptomEditRecord] = useState(null);
   const [discreetMode, setDiscreetMode] = useState(() => getDiscreetMode());
+  const [showDiaryModeTransition, setShowDiaryModeTransition] = useState(false);
+  const [transitioningToDiary, setTransitioningToDiary] = useState(true);
+  const discreetTransitionTimers = useRef([]);
   const [language, setLanguage] = useState(
     () => localStorage.getItem("cyclecare_language") || "en"
   );
@@ -245,9 +275,36 @@ function App() {
     return () => window.removeEventListener("storage", syncDiscreetMode);
   }, []);
 
+  useEffect(() => () => {
+    discreetTransitionTimers.current.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
+  useEffect(() => () => {
+    window.clearTimeout(devicePreviewTimer.current);
+    window.clearTimeout(vaultUnlockTimer.current);
+  }, []);
+
+  function changeDevicePreview(nextPreview) {
+    if (nextPreview === devicePreview) return;
+    window.clearTimeout(devicePreviewTimer.current);
+    setDevicePreviewTransitioning(true);
+    setDevicePreview(nextPreview);
+    devicePreviewTimer.current = window.setTimeout(
+      () => setDevicePreviewTransitioning(false),
+      360
+    );
+  }
+
   function updateDiscreetMode(enabled) {
+    discreetTransitionTimers.current.forEach((timer) => window.clearTimeout(timer));
+    discreetTransitionTimers.current = [];
     localStorage.setItem("cyclecare_discreet_mode", String(enabled));
-    setDiscreetMode(enabled);
+    setTransitioningToDiary(enabled);
+    setShowDiaryModeTransition(true);
+    discreetTransitionTimers.current = [
+      window.setTimeout(() => setDiscreetMode(enabled), 610),
+      window.setTimeout(() => setShowDiaryModeTransition(false), 2000),
+    ];
   }
 
   function chooseLanguage(value) {
@@ -274,7 +331,10 @@ function App() {
       setPregnancyVisible(
         getHealthItem("cyclecare_pregnancy_info_visible") === "true"
       );
+      setVaultUnlocking(true);
       setVaultLocked(false);
+      window.clearTimeout(vaultUnlockTimer.current);
+      vaultUnlockTimer.current = window.setTimeout(() => setVaultUnlocking(false), 1180);
     });
   }
 
@@ -301,7 +361,7 @@ function App() {
   }
 
   return (
-    <div className={`app-container ${language === "hi" ? "language-hi" : ""} ${devicePreview === "mobile" ? "device-preview-mobile" : ""}`}>
+    <div className={`app-container ${language === "hi" ? "language-hi" : ""} ${devicePreview === "mobile" ? "device-preview-mobile" : ""} ${devicePreviewTransitioning ? "device-preview-transitioning" : ""} ${vaultUnlocking ? "vault-unlocking" : ""}`}>
       {vaultLocked ? (
         <VaultUnlockDialog onUnlock={unlockVault} />
       ) : (
@@ -396,27 +456,6 @@ function App() {
             </div>
           </div>
 
-          <div className="device-switcher" role="group" aria-label="Device preview">
-            <button
-              type="button"
-              className={devicePreview === "desktop" ? "device-switch-active" : ""}
-              aria-pressed={devicePreview === "desktop"}
-              onClick={() => setDevicePreview("desktop")}
-            >
-              <Laptop size={17} />
-              <span>Desktop</span>
-            </button>
-            <button
-              type="button"
-              className={devicePreview === "mobile" ? "device-switch-active" : ""}
-              aria-pressed={devicePreview === "mobile"}
-              onClick={() => setDevicePreview("mobile")}
-            >
-              <Smartphone size={17} />
-              <span>Mobile</span>
-            </button>
-          </div>
-
           <div className="profile-badge">
             {discreetMode ? <BookOpen size={19} /> : <Heart size={19} />}
           </div>
@@ -456,6 +495,8 @@ function App() {
             onAgeGroupChange={updateAgeGroup}
             pregnancyVisible={pregnancyVisible}
             onPregnancyVisibilityChange={updatePregnancyVisibility}
+            devicePreview={devicePreview}
+            onDevicePreviewChange={changeDevicePreview}
           />
         )}
         </div>
@@ -490,6 +531,16 @@ function App() {
         />
       )}
       {storageError && <div className="storage-error" role="alert">{storageError}</div>}
+      {showDiaryModeTransition && (
+        <div className="diary-mode-transition" role="status" aria-live="polite">
+          <div className="diary-transition-content">
+            <span>{transitioningToDiary ? "Diary mode" : "Normal mode"}</span>
+            <div className="diary-loading-track" aria-hidden="true">
+              <span />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -754,6 +805,12 @@ function Dashboard({ discreetMode }) {
               ? `Last recorded period began ${latestEntry.startDate}.`
               : "Start by recording your last period."}
           </p>
+          <button
+            className="stat-card-link"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
+          >
+            {latestEntry ? "View period records" : "Record a period"}
+          </button>
         </article>
 
         <article className="stat-card">
@@ -779,6 +836,12 @@ function Dashboard({ discreetMode }) {
               ? "Based on your two most recent recorded period starts."
               : "Record at least two period start dates to explore your pattern."}
           </p>
+          <button
+            className="stat-card-link"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "Insights" }))}
+          >
+            Explore insights
+          </button>
         </article>
 
         <article className="stat-card">
@@ -791,6 +854,12 @@ function Dashboard({ discreetMode }) {
 
           <h3>Check in with yourself</h3>
           <p>Make a little time to notice how you feel today.</p>
+          <button
+            className="stat-card-link"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Symptoms" }))}
+          >
+            Log symptoms
+          </button>
         </article>
       </section>
 
@@ -1715,6 +1784,7 @@ function RemindersPage({ discreetMode }) {
     () => ("Notification" in window ? Notification.permission : "unsupported")
   );
   const [customText, setCustomText] = useState("");
+  const [customTime, setCustomTime] = useState("09:00");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -1837,23 +1907,34 @@ function RemindersPage({ discreetMode }) {
         return (
           <div className="reminder-row" key={item.id}>
             <label><input type="checkbox" checked={current.enabled} onChange={(event) => save([...reminders.filter((reminder) => reminder.id !== item.id), { ...current, enabled: event.target.checked }])} /> {item.title}</label>
-            <input aria-label={`${item.title} time`} type="time" value={current.time} onChange={(event) => save([...reminders.filter((reminder) => reminder.id !== item.id), { ...current, time: event.target.value }])} />
+            <AnimatedTimeSelect id={`reminder-time-${item.id}`} value={current.time} onChange={(event) => save([...reminders.filter((reminder) => reminder.id !== item.id), { ...current, time: event.target.value }])} />
           </div>
         );
       })}
       <label className="field-label" htmlFor="custom-reminder">Custom reminder</label>
       <div className="custom-reminder-row">
         <input id="custom-reminder" value={customText} onChange={(event) => setCustomText(event.target.value)} maxLength={80} placeholder="Reminder name" />
+        <label className="sr-only" htmlFor="custom-reminder-time">Reminder time</label>
+        <AnimatedTimeSelect id="custom-reminder-time" value={customTime} onChange={(event) => setCustomTime(event.target.value)} />
         <button className="secondary-button" onClick={() => {
           if (!customText.trim()) return;
-          save([...reminders, { id: `custom-${Date.now()}`, title: customText.trim(), message: customText.trim(), time: "09:00", enabled: false }]);
+          save([...reminders, { id: `custom-${Date.now()}`, title: customText.trim(), message: customText.trim(), time: customTime, enabled: false }]);
           setCustomText("");
         }}>Add</button>
       </div>
       {reminders.filter((item) => item.id.startsWith("custom-")).map((item) => (
         <div className="reminder-row" key={item.id}>
           <label><input type="checkbox" checked={item.enabled} onChange={(event) => save(reminders.map((reminder) => reminder.id === item.id ? { ...reminder, enabled: event.target.checked } : reminder))} /> {item.title}</label>
-          <input aria-label={`${item.title} time`} type="time" value={item.time} onChange={(event) => save(reminders.map((reminder) => reminder.id === item.id ? { ...reminder, time: event.target.value } : reminder))} />
+          <AnimatedTimeSelect id={`reminder-time-${item.id}`} value={item.time} onChange={(event) => save(reminders.map((reminder) => reminder.id === item.id ? { ...reminder, time: event.target.value } : reminder))} />
+          <button
+            type="button"
+            className="reminder-remove"
+            aria-label={`Remove ${item.title} reminder`}
+            title="Remove reminder"
+            onClick={() => save(reminders.filter((reminder) => reminder.id !== item.id))}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       ))}
       {message && <p className="form-message" role="status">{message}</p>}
@@ -1963,6 +2044,12 @@ function VaultUnlockDialog({ onUnlock }) {
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pinRejected, setPinRejected] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [showWrongPassword, setShowWrongPassword] = useState(false);
+  const pinFallTimer = useRef(null);
+
+  useEffect(() => () => window.clearTimeout(pinFallTimer.current), []);
 
   async function submit(event) {
     event.preventDefault();
@@ -1972,28 +2059,71 @@ function VaultUnlockDialog({ onUnlock }) {
     }
     setBusy(true);
     setMessage("");
+    setShowWrongPassword(false);
     try {
       await onUnlock(pin);
     } catch {
-      setMessage("Could not unlock. Check your PIN; forgotten PINs cannot be recovered.");
-      setPin("");
+      setIsRebuilding(false);
+      setPinRejected(true);
+      pinFallTimer.current = window.setTimeout(() => {
+        setPin("");
+        setPinRejected(false);
+        setMessage("");
+        setShowWrongPassword(true);
+        setIsRebuilding(false);
+        setIsRebuilding(true);
+        pinFallTimer.current = window.setTimeout(() => setShowWrongPassword(false), 700);
+      }, 1150);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="onboarding-backdrop">
-      <section className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-heading">
-        <LockKeyhole size={28} aria-hidden="true" />
+    <div className="onboarding-backdrop vault-unlock-backdrop">
+      <div className="vault-lock-brand">CycleCare</div>
+      {showWrongPassword && <div className="vault-wrong-password-toast" role="alert">Your password is wrong</div>}
+      <section className={`onboarding-dialog vault-unlock-dialog ${message ? "has-error" : ""} ${pinRejected ? "is-breaking" : ""} ${isRebuilding ? "is-rebuilding" : ""}`} role="dialog" aria-modal="true" aria-labelledby="vault-heading">
+        <div className="vault-lock-icon"><LockKeyhole size={25} aria-hidden="true" /></div>
         <h2 id="vault-heading">CycleCare is locked</h2>
         <p>Your health records are encrypted on this device. Enter the four-digit PIN to unlock. A forgotten PIN cannot be recovered.</p>
-        <form onSubmit={submit}>
+        <form className="vault-unlock-form" onSubmit={submit}>
           <label className="field-label" htmlFor="vault-pin">Four-digit PIN</label>
-          <input id="vault-pin" type="password" inputMode="numeric" autoComplete="current-password" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))} required />
-          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Unlocking..." : "Unlock"}</button>
+          <div className="vault-pin-entry">
+            <input id="vault-pin" className="vault-pin-input" type="password" inputMode="numeric" autoComplete="current-password" maxLength={4} value={pin} onChange={(event) => {
+              setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
+              setMessage("");
+              setPinRejected(false);
+              window.clearTimeout(pinFallTimer.current);
+            }} required disabled={busy || pinRejected} />
+            <div className="vault-pin-slots" aria-hidden="true">
+              {Array.from({ length: 4 }, (_, index) => (
+                <span
+                  className={`vault-pin-slot ${pinRejected ? "is-rejected" : ""}`}
+                  key={`${index}-${Boolean(pin[index])}-${pinRejected}`}
+                  style={{ "--pin-index": index }}
+                >
+                  {pin[index] && <span className="vault-pin-dot" />}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button className="primary-button" type="submit" disabled={busy || pinRejected}>
+            {busy && <span className="vault-loading-spinner" aria-hidden="true" />}
+            {busy ? "Unlocking..." : "Unlock"}
+          </button>
         </form>
-        {message && <p className="form-message" role="alert">{message}</p>}
+        {message && (
+          <p className={`form-message vault-error-message ${pinRejected ? "is-falling" : ""}`} role="alert">
+            {pinRejected
+              ? [...message].map((character, index) => (
+                  <span key={`${index}-${character}`} style={{ "--letter-index": index }}>
+                    {character === " " ? "\u00a0" : character}
+                  </span>
+                ))
+              : message}
+          </p>
+        )}
       </section>
     </div>
   );
@@ -2493,7 +2623,7 @@ function LearnPage({ language }) {
         <p className="article-intro">{article.intro}</p>
         {article.sections.map(([heading, body]) => <section className="article-section" key={heading}><h3>{heading}</h3><p>{body}</p></section>)}
         <div className="article-takeaway"><h3>{language === "hi" ? "मुख्य बात" : "Key takeaway"}</h3><p>{article.takeaway}</p></div>
-        <button className="secondary-button" onClick={() => {
+        <button className="secondary-button read-aloud-button" onClick={() => {
           if (!("speechSynthesis" in window)) return;
           if (isReading) {
             window.speechSynthesis.cancel();
@@ -2501,6 +2631,7 @@ function LearnPage({ language }) {
           } else {
             const speech = new SpeechSynthesisUtterance(`${article.title}. ${article.intro}. ${article.sections.map(([heading, body]) => `${heading}. ${body}`).join(". ")}. ${article.takeaway}`);
             speech.lang = language === "hi" ? "hi-IN" : "en-IN";
+            applyPreferredSpeechVoice(speech);
             speech.onend = () => setIsReading(false);
             window.speechSynthesis.speak(speech);
             setIsReading(true);
@@ -2540,8 +2671,14 @@ function SettingsPage({
   onAgeGroupChange,
   pregnancyVisible,
   onPregnancyVisibilityChange,
+  devicePreview,
+  onDevicePreviewChange,
 }) {
   const [message, setMessage] = useState("");
+  const [speechVoices, setSpeechVoices] = useState([]);
+  const [speechVoiceURI, setSpeechVoiceURI] = useState(
+    () => localStorage.getItem("cyclecare_speech_voice") || "auto-feminine"
+  );
   const [textSize, setTextSize] = useState(
     () => localStorage.getItem("cyclecare_text_size") || "default"
   );
@@ -2557,6 +2694,14 @@ function SettingsPage({
       getHealthItem("cyclecare_fertility_info_visible") === "true" ||
       ageGroup !== "under18"
   );
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return undefined;
+    const updateVoices = () => setSpeechVoices(window.speechSynthesis.getVoices());
+    updateVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", updateVoices);
+    return () => window.speechSynthesis.removeEventListener?.("voiceschanged", updateVoices);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.textSize = textSize;
@@ -2782,12 +2927,56 @@ function SettingsPage({
       <section className="settings-preferences">
         <span className="eyebrow">ACCESSIBILITY & PERSONALIZATION</span>
         <h3>App preferences</h3>
+        <label className="field-label">Device preview</label>
+        <div className="device-switcher settings-device-switcher" role="group" aria-label="Device preview">
+          <button
+            type="button"
+            className={devicePreview === "desktop" ? "device-switch-active" : ""}
+            aria-pressed={devicePreview === "desktop"}
+            onClick={() => onDevicePreviewChange("desktop")}
+          >
+            <Laptop size={17} />
+            <span>Desktop</span>
+          </button>
+          <button
+            type="button"
+            className={devicePreview === "mobile" ? "device-switch-active" : ""}
+            aria-pressed={devicePreview === "mobile"}
+            onClick={() => onDevicePreviewChange("mobile")}
+          >
+            <Smartphone size={17} />
+            <span>Mobile</span>
+          </button>
+        </div>
+        <p className="privacy-hint">Preview how CycleCare pages arrange on desktop or mobile.</p>
         <label className="field-label" htmlFor="app-language">Language</label>
         <AnimatedSelect id="app-language" value={language} onChange={(event) => onLanguageChange(event.target.value)}>
           <option value="en">English</option>
           <option value="hi">हिंदी</option>
         </AnimatedSelect>
         <p className="privacy-hint">Hindi is available for onboarding, selected guidance and FAQ content. Some screens are not yet translated.</p>
+
+        <label className="field-label" htmlFor="speech-voice">Reading voice</label>
+        <select
+          id="speech-voice"
+          value={speechVoiceURI}
+          onChange={(event) => {
+            setSpeechVoiceURI(event.target.value);
+            localStorage.setItem("cyclecare_speech_voice", event.target.value);
+          }}
+          disabled={!speechVoices.length}
+        >
+          <option value="auto-feminine">Soft feminine voice (automatic)</option>
+          <option value="">System default</option>
+          {speechVoices.map((voice) => (
+            <option value={voice.voiceURI} key={voice.voiceURI}>
+              {voice.name} ({voice.lang})
+            </option>
+          ))}
+        </select>
+        <p className="privacy-hint">
+          The automatic option prefers a soft feminine voice in Hindi or English when your browser provides one. This also applies to Listen in Learn.
+        </p>
 
         <label className="field-label" htmlFor="age-group">Age group for cycle guidance</label>
         <AnimatedSelect id="age-group" value={ageGroup} onChange={(event) => {
@@ -2833,13 +3022,14 @@ function SettingsPage({
           setHighContrast(event.target.checked);
           localStorage.setItem("cyclecare_high_contrast", String(event.target.checked));
         }} /> High contrast</label>
-        <button className="secondary-button" onClick={() => {
+        <button className="secondary-button read-aloud-button" onClick={() => {
           if (!("speechSynthesis" in window)) {
             setMessage("Read aloud is not available in this browser.");
             return;
           }
           const speech = new SpeechSynthesisUtterance(document.querySelector("main")?.innerText || "");
           speech.lang = language === "hi" ? "hi-IN" : "en-IN";
+          applyPreferredSpeechVoice(speech);
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(speech);
         }}>Read this screen aloud</button>
@@ -3608,6 +3798,40 @@ function formatDate(value) {
 
 function formatDateRange(start, end) {
   return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
+function applyPreferredSpeechVoice(utterance) {
+  try {
+    utterance.rate = 0.94;
+    utterance.pitch = 1.04;
+    utterance.volume = 1;
+    const preferredVoiceURI = localStorage.getItem("cyclecare_speech_voice");
+    if (!("speechSynthesis" in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (preferredVoiceURI && preferredVoiceURI !== "auto-feminine") {
+      const selectedVoice = voices.find((voice) => voice.voiceURI === preferredVoiceURI);
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        return;
+      }
+    }
+
+    const language = utterance.lang.toLowerCase().split("-")[0];
+    const languageVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(language));
+    const feminineName = /female|woman|heera|kalpana|swara|aditi|priya|zira|aria|jenny|sonia|neerja|samantha|eva|susan|hazel/i;
+    const voiceQuality = (voice) => {
+      const name = voice.name.toLowerCase();
+      return (/(natural|neural|premium|enhanced)/i.test(name) ? 5 : 0)
+        + (feminineName.test(voice.name) ? 3 : 0)
+        + (voice.localService === false ? 2 : 0)
+        + (/(google|microsoft)/i.test(name) ? 1 : 0);
+    };
+    const preferredVoice = [...languageVoices].sort((a, b) => voiceQuality(b) - voiceQuality(a))[0]
+      || voices.find((voice) => feminineName.test(voice.name));
+    if (preferredVoice) utterance.voice = preferredVoice;
+  } catch {
+    // Keep the browser's default voice if saved preferences are unavailable.
+  }
 }
 
 function localDateString() {
