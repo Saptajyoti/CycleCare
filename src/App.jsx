@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Heart,
   LayoutDashboard,
@@ -14,6 +14,7 @@ import {
   X,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
   Search,
   ArrowLeft,
   ExternalLink,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
 import heroIllustration from "./assets/cyclecare-hero.webp";
+import { CycleCareLogo } from "./components/CycleCareLogo";
 
 import "./App.css";
 
@@ -62,6 +64,113 @@ const navigation = [
   { name: "Reminders", icon: Bell },
   { name: "Pregnancy", icon: Baby },
 ];
+
+function AnimatedSelect({ id, value, onChange, children }) {
+  const [open, setOpen] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef(null);
+  const optionRefs = useRef([]);
+  const closeTimer = useRef(null);
+  const options = React.Children.toArray(children).filter(
+    (child) => React.isValidElement(child) && child.type === "option"
+  );
+  const selectedIndex = Math.max(0, options.findIndex((option) => String(option.props.value) === String(value)));
+  const selectedOption = options[selectedIndex];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!rootRef.current?.contains(event.target)) hideMenu();
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") hideMenu();
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  function showMenu() {
+    window.clearTimeout(closeTimer.current);
+    setActiveIndex(selectedIndex);
+    setMenuVisible(true);
+    setOpen(true);
+  }
+
+  function hideMenu() {
+    setOpen(false);
+    closeTimer.current = window.setTimeout(() => setMenuVisible(false), 150);
+  }
+
+  function chooseOption(option) {
+    onChange({ target: { value: String(option.props.value) } });
+    hideMenu();
+  }
+
+  function handleKeyDown(event) {
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      if (!open) {
+        showMenu();
+        return;
+      }
+      const nextIndex = event.key === "Home" ? 0
+        : event.key === "End" ? options.length - 1
+          : (activeIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+      setActiveIndex(nextIndex);
+      optionRefs.current[nextIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (open) chooseOption(options[activeIndex]);
+      else showMenu();
+    }
+  }
+
+  return (
+    <div className="animated-select" ref={rootRef}>
+      <button
+        id={id}
+        type="button"
+        className={`animated-select-trigger ${open ? "is-open" : ""}`}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-options`}
+        aria-activedescendant={open ? `${id}-option-${activeIndex}` : undefined}
+        onClick={() => (open ? hideMenu() : showMenu())}
+        onKeyDown={handleKeyDown}
+      >
+        <span>{selectedOption?.props.children}</span>
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      {menuVisible && (
+        <div className={`animated-select-menu ${open ? "is-open" : "is-closing"}`} id={`${id}-options`} role="listbox" aria-labelledby={id}>
+          {options.map((option, index) => (
+            <div
+              key={option.props.value}
+              id={`${id}-option-${index}`}
+              ref={(element) => { optionRefs.current[index] = element; }}
+              className={`animated-select-option ${index === selectedIndex ? "is-selected" : ""} ${index === activeIndex ? "is-active" : ""}`}
+              role="option"
+              aria-selected={index === selectedIndex}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => chooseOption(option)}
+            >
+              {option.props.children}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function App() {
   const [activePage, setActivePage] = useState("Overview");
@@ -200,13 +309,13 @@ function App() {
       <>
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
-          <div className="brand-icon">
-            {discreetMode ? <BookOpen size={23} /> : <Heart size={23} />}
-          </div>
-
-          <span>
-            {discreetMode ? "Diary" : <>cyclecare<span className="brand-dot">.</span></>}
-          </span>
+          <button className="brand-home" type="button" onClick={() => navigateTo("Overview")} aria-label={discreetMode ? "Diary home" : "CycleCare home"}>
+            {discreetMode ? (
+              <><span className="brand-icon"><BookOpen size={23} /></span><span>Diary</span></>
+            ) : (
+              <CycleCareLogo size={44} showWordmark decorative />
+            )}
+          </button>
 
           <button
             className="close-menu"
@@ -284,7 +393,7 @@ function App() {
 
             <div>
               <p className="topbar-date">YOUR PERSONAL WELLNESS SPACE</p>
-              <h2>{activePage}</h2>
+              <h2 className="page-heading" key={activePage}>{activePage}</h2>
             </div>
           </div>
 
@@ -825,7 +934,7 @@ function Dashboard({ discreetMode }) {
 
               <label htmlFor="period-length">Period duration</label>
 
-              <select
+              <AnimatedSelect
                 id="period-length"
                 value={periodLength}
                 onChange={(event) => setPeriodLength(event.target.value)}
@@ -837,10 +946,10 @@ function Dashboard({ discreetMode }) {
                     </option>
                   )
                 )}
-              </select>
+              </AnimatedSelect>
 
               <label htmlFor="period-flow">Flow intensity</label>
-              <select
+              <AnimatedSelect
                 id="period-flow"
                 value={flow}
                 onChange={(event) => setFlow(event.target.value)}
@@ -849,7 +958,7 @@ function Dashboard({ discreetMode }) {
                 <option value="light">Light</option>
                 <option value="medium">Medium</option>
                 <option value="heavy">Heavy</option>
-              </select>
+              </AnimatedSelect>
 
               {flow === "heavy" && (
                 <fieldset className="heavy-flow-questions">
@@ -1114,13 +1223,13 @@ function CalendarPage() {
           {selectedIsPeriod && (
             <>
               <label className="field-label" htmlFor="calendar-period-length">Recorded duration</label>
-              <select id="calendar-period-length" value={selectedPeriodLength} onChange={(event) => setSelectedPeriodLength(event.target.value)}>
+              <AnimatedSelect id="calendar-period-length" value={selectedPeriodLength} onChange={(event) => setSelectedPeriodLength(event.target.value)}>
                 {Array.from({ length: 10 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day} {day === 1 ? "day" : "days"}</option>)}
-              </select>
+              </AnimatedSelect>
               <label className="field-label" htmlFor="calendar-flow">Flow</label>
-              <select id="calendar-flow" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
+              <AnimatedSelect id="calendar-flow" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
                 <option value="spotting">Spotting</option><option value="light">Light</option><option value="medium">Medium</option><option value="heavy">Heavy</option>
-              </select>
+              </AnimatedSelect>
             </>
           )}
           <div className="calendar-editor-actions">
@@ -2053,6 +2162,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
             min="0"
             max="10"
             value={pain}
+            style={{ "--pain-progress": `${Number(pain) * 10}%` }}
             onChange={(event) => setPain(event.target.value)}
           />
           <label className="check-field">
@@ -2091,21 +2201,21 @@ function SymptomsPage({ editRecord, onEditComplete }) {
         <section className="symptom-form-section symptom-wellbeing-fields">
           <div className="symptom-field">
             <label className="field-label" htmlFor="mood">Mood today</label>
-            <select id="mood" value={mood} onChange={(event) => setMood(event.target.value)}>
+            <AnimatedSelect id="mood" value={mood} onChange={(event) => setMood(event.target.value)}>
               <option value="very-low">Very low</option>
               <option value="low">Low</option>
               <option value="okay">Okay</option>
               <option value="good">Good</option>
               <option value="very-good">Very good</option>
-            </select>
+            </AnimatedSelect>
           </div>
           <div className="symptom-field">
             <label className="field-label" htmlFor="energy">Energy today</label>
-            <select id="energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
+            <AnimatedSelect id="energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
               <option value="low">Low</option>
               <option value="usual">Usual</option>
               <option value="high">High</option>
-            </select>
+            </AnimatedSelect>
           </div>
           <div className="symptom-field">
             <label className="field-label" htmlFor="sleep-hours">Sleep (hours, optional)</label>
@@ -2676,20 +2786,20 @@ function SettingsPage({
         <span className="eyebrow">ACCESSIBILITY & PERSONALIZATION</span>
         <h3>App preferences</h3>
         <label className="field-label" htmlFor="app-language">Language</label>
-        <select id="app-language" value={language} onChange={(event) => onLanguageChange(event.target.value)}>
+        <AnimatedSelect id="app-language" value={language} onChange={(event) => onLanguageChange(event.target.value)}>
           <option value="en">English</option>
           <option value="hi">हिंदी</option>
-        </select>
+        </AnimatedSelect>
         <p className="privacy-hint">Hindi is available for onboarding, selected guidance and FAQ content. Some screens are not yet translated.</p>
 
         <label className="field-label" htmlFor="age-group">Age group for cycle guidance</label>
-        <select id="age-group" value={ageGroup} onChange={(event) => {
+        <AnimatedSelect id="age-group" value={ageGroup} onChange={(event) => {
           handleAgeGroupChange(event.target.value);
         }}>
           <option value="under18">Under 18</option>
           <option value="adult">18 and over</option>
           <option value="prefer-not">Prefer not to say (adult guidance)</option>
-        </select>
+        </AnimatedSelect>
         <p className="privacy-hint">This only changes the general cycle range used for prompts. It cannot assess personal health or determine age-specific care needs.</p>
         {ageGroup === "under18" && (
           <label className="check-field">
@@ -2714,14 +2824,14 @@ function SettingsPage({
         </label>
 
         <label className="field-label" htmlFor="text-size">Text size</label>
-        <select id="text-size" value={textSize} onChange={(event) => {
+        <AnimatedSelect id="text-size" value={textSize} onChange={(event) => {
           setTextSize(event.target.value);
           localStorage.setItem("cyclecare_text_size", event.target.value);
         }}>
           <option value="small">Small</option>
           <option value="default">Default</option>
           <option value="large">Large</option>
-        </select>
+        </AnimatedSelect>
         <label className="check-field"><input type="checkbox" checked={highContrast} onChange={(event) => {
           setHighContrast(event.target.checked);
           localStorage.setItem("cyclecare_high_contrast", String(event.target.checked));
