@@ -15,6 +15,8 @@ profile; the app does not send them to a CycleCare server.
   cautious, record-based care guidance.
 - Offline keyword matching for a finite FAQ, sourced health lessons and
   articles, English/Hindi content in selected areas, and optional read-aloud.
+- An opt-in Gemini educational assistant, with the existing offline FAQ kept as
+  a fallback. Saved CycleCare data is never sent to Gemini.
 - Opt-in reminders while the Reminders page is open and optional pregnancy
   information mode.
 - A warm ivory and blush botanical theme, responsive desktop/mobile preview,
@@ -70,6 +72,28 @@ Use a current Node.js version supported by Vite 8.
 npm install
 npm run dev
 ```
+
+To enable Gemini responses, start the Express backend in a second terminal.
+Create `server/.env` (it is ignored by Git) with:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-3.5-flash-lite
+CLIENT_ORIGIN=http://localhost:5173
+GEMINI_TIMEOUT_MS=30000
+```
+
+Then run:
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+The frontend calls `http://localhost:5000/api/assistant` only after the user
+explicitly consents. That preference stays local to the browser and can be
+revoked from Ask.
 
 Available checks and commands:
 
