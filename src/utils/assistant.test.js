@@ -22,7 +22,7 @@ test("stores consent locally and removes it when revoked", () => {
   assert.equal(hasAiConsent(local), false);
 });
 
-test("uses the local assistant endpoint when no deployment URL is configured", () => {
+test("uses the local assistant endpoint outside a production build", () => {
   assert.equal(ASSISTANT_ENDPOINT, "http://localhost:5000/api/assistant");
 });
 
@@ -47,5 +47,14 @@ test("turns an expired assistant request into a helpful timeout message", async 
       1
     ),
     /took too long/
+  );
+});
+
+test("uses a safe message when the assistant endpoint cannot be reached", async () => {
+  await assert.rejects(
+    requestAssistantResponse("What is PMS?", async () => {
+      throw new TypeError("Failed to fetch");
+    }),
+    /could not be reached/
   );
 });
