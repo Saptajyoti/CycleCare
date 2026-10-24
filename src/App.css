@@ -4007,7 +4007,7 @@ body {
   overflow: hidden;
   background: #fff;
   clip-path: circle(0 at 50% 50%);
-  animation: diary-screen-expand 2000ms cubic-bezier(0.2, 0.72, 0.25, 1) both;}
+  animation: diary-screen-expand 3000ms cubic-bezier(0.2, 0.72, 0.25, 1) both;}
 
 .diary-transition-content {
   display: grid;
@@ -4039,7 +4039,7 @@ body {
   background: #a94d55;
   transform: scaleX(0);
   transform-origin: left center;
-  animation: diary-loading-progress 1350ms ease 570ms both;}
+  animation: diary-loading-progress 2200ms ease 570ms both;}
 
 @keyframes diary-screen-expand {
   0% { clip-path: circle(0 at 50% 50%); opacity: 1; }

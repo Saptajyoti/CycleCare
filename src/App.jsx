@@ -331,7 +331,7 @@ function App() {
     setShowDiaryModeTransition(true);
     discreetTransitionTimers.current = [
       window.setTimeout(() => setDiscreetMode(enabled), 610),
-      window.setTimeout(() => setShowDiaryModeTransition(false), 2000),
+      window.setTimeout(() => setShowDiaryModeTransition(false), 3000),
     ];
   }
 
