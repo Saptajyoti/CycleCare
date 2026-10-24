@@ -33,6 +33,8 @@ import {
   Volume2,
   Trash2,
   Send,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -194,6 +196,28 @@ function AnimatedTimeSelect({ id, value, onChange }) {
         return <option key={time} value={time}>{label}</option>;
       })}
     </AnimatedSelect>
+  );
+}
+
+function SelectionCards({ legend, value, onChange, options, className = "" }) {
+  return (
+    <fieldset className={`selection-card-fieldset ${className}`.trim()}>
+      <legend>{legend}</legend>
+      <div className="selection-card-grid">
+        {options.map((option) => (
+          <button
+            className={`selection-card ${String(value) === String(option.value) ? "is-selected" : ""}`}
+            type="button"
+            key={option.value}
+            aria-pressed={String(value) === String(option.value)}
+            onClick={() => onChange(option.selectValue ?? option.value)}
+          >
+            <strong>{option.label}</strong>
+            {option.description && <span>{option.description}</span>}
+          </button>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
@@ -683,6 +707,8 @@ function Dashboard({ discreetMode }) {
   const latestEntry = entries.length
     ? entries[entries.length - 1]
     : null;
+  const cycleEstimate = getCycleEstimate(entries);
+  const pregnancyMode = getHealthItem("cyclecare_pregnancy_mode") === "true";
 
   function handleLogPeriod(event) {
     event.preventDefault();
@@ -756,6 +782,15 @@ function Dashboard({ discreetMode }) {
             Understand your cycle, follow how you feel, and find supportive
             care that fits your day.
           </p>
+
+          <button
+            type="button"
+            className="primary-button dashboard-log-cta"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Symptoms" }))}
+          >
+            <Activity size={18} />
+            Log Today’s Symptoms
+          </button>
 
           <div className="welcome-highlights" aria-label="CycleCare benefits">
             <span><Heart size={15} />Care that centers you</span>
@@ -865,23 +900,52 @@ function Dashboard({ discreetMode }) {
         </article>
       </section>
 
-      {latestEntry && !discreetMode && (
-        <section className="cycle-day-card" aria-live="polite">
-          {(() => {
-            const cycleDay = daysBetween(latestEntry.startDate, localDateString()) + 1;
-            const phase = getCyclePhase(cycleDay, latestEntry.periodLength);
-            return (
+      {!discreetMode && !pregnancyMode && (
+        <section className="dashboard-cycle-card" aria-labelledby="dashboard-estimate-heading">
+          <div className="dashboard-cycle-copy">
+            <span className="eyebrow">YOUR CYCLE AT A GLANCE</span>
+            <h2 id="dashboard-estimate-heading">Next estimated period</h2>
+            {cycleEstimate && !cycleEstimate.needsReview ? (
               <>
-                <span className="eyebrow">TODAY'S CYCLE RECORD</span>
-                <h2>Day {cycleDay}</h2>
-                <p>{phase}</p>
-                <p className="cycle-day-note">
-                  Cycle day is counted from the latest recorded period start;
-                  it is a date calculation, not a biological measurement.
-                </p>
+                <strong className="dashboard-estimate-date">{formatDate(cycleEstimate.nextStart)}</strong>
+                <p>Likely window: {formatDateRange(cycleEstimate.windowStart, cycleEstimate.windowEnd)}</p>
               </>
-            );
-          })()}
+            ) : cycleEstimate?.needsReview ? (
+              <p>A recent gap needs review before showing an estimate.</p>
+            ) : (
+              <p>Log three period starts to see a date estimate based on your recorded history.</p>
+            )}
+          </div>
+          {latestEntry && (
+            <div className="dashboard-cycle-progress">
+              <div className="dashboard-cycle-progress-label">
+                <span>Cycle day {Math.max(1, daysBetween(latestEntry.startDate, localDateString()) + 1)}</span>
+                {cycleEstimate && !cycleEstimate.needsReview && <span>Typical cycle: {cycleEstimate.medianCycleLength} days</span>}
+              </div>
+              <div
+                className="dashboard-cycle-progress-track"
+                role="progressbar"
+                aria-label="Calendar progress through typical recorded cycle"
+                aria-valuemin={0}
+                aria-valuemax={cycleEstimate && !cycleEstimate.needsReview ? cycleEstimate.medianCycleLength : 100}
+                aria-valuenow={cycleEstimate && !cycleEstimate.needsReview
+                  ? Math.min(cycleEstimate.medianCycleLength, Math.max(0, daysBetween(latestEntry.startDate, localDateString()) + 1))
+                  : 0}
+              >
+                <span style={{ width: cycleEstimate && !cycleEstimate.needsReview
+                  ? `${Math.min(100, Math.max(0, ((daysBetween(latestEntry.startDate, localDateString()) + 1) / cycleEstimate.medianCycleLength) * 100))}%`
+                  : "0%" }} />
+              </div>
+              <p>Calendar estimate only; cycle day is counted from your recorded start date.</p>
+            </div>
+          )}
+          <button
+            type="button"
+            className="secondary-button dashboard-calendar-link"
+            onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
+          >
+            {cycleEstimate?.needsReview ? "Review dates" : "View calendar"}
+          </button>
         </section>
       )}
 
@@ -1113,7 +1177,7 @@ function CalendarPage() {
   const [, setRefresh] = useState(0);
   const [confirmedGap, setConfirmedGap] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedPeriodLength, setSelectedPeriodLength] = useState("5");
+  const [selectedPeriodEnd, setSelectedPeriodEnd] = useState("");
   const [selectedFlow, setSelectedFlow] = useState("medium");
   const [selectedIsPeriod, setSelectedIsPeriod] = useState(false);
   const [calendarMessage, setCalendarMessage] = useState("");
@@ -1160,6 +1224,8 @@ function CalendarPage() {
       : null;
 
   const periodDates = new Set();
+  const periodStartDates = new Set();
+  const periodEndDates = new Set();
   const estimatedDates = new Set();
   const symptomDates = new Set(
     getSymptomEntries()
@@ -1174,6 +1240,14 @@ function CalendarPage() {
     const start = parseDateOnly(entry.startDate);
 
     if (!start) return;
+    if (start.getFullYear() === year && start.getMonth() === month) {
+      periodStartDates.add(start.getDate());
+    }
+
+    const end = addDays(start, entry.periodLength - 1);
+    if (end.getFullYear() === year && end.getMonth() === month) {
+      periodEndDates.add(end.getDate());
+    }
 
     for (let i = 0; i < entry.periodLength; i++) {
       const date = new Date(start);
@@ -1246,6 +1320,8 @@ function CalendarPage() {
         {Array.from({ length: numberOfDays }, (_, index) => {
           const day = index + 1;
           const isPeriodDay = periodDates.has(day);
+          const isPeriodStart = periodStartDates.has(day);
+          const isPeriodEnd = periodEndDates.has(day);
           const isEstimatedDay = estimatedDates.has(day);
           const hasSymptomLog = symptomDates.has(day);
           const dateString = localDateStringForDate(new Date(year, month, day));
@@ -1257,7 +1333,7 @@ function CalendarPage() {
               disabled={dateString > localDateString()}
               className={`calendar-day ${
                 isPeriodDay ? "period-day" : ""
-              } ${isEstimatedDay && !isPeriodDay ? "estimated-day" : ""} ${hasSymptomLog ? "symptom-day" : ""} ${selectedDate === dateString ? "selected-calendar-day" : ""}`}
+              } ${isPeriodStart ? "period-start-day" : ""} ${isPeriodEnd ? "period-end-day" : ""} ${isEstimatedDay && !isPeriodDay ? "estimated-day" : ""} ${hasSymptomLog ? "symptom-day" : ""} ${selectedDate === dateString ? "selected-calendar-day" : ""}`}
               aria-label={`${formatDate(dateString)}${isPeriodDay ? ", recorded period" : ""}${isEstimatedDay ? ", estimated window" : ""}${hasSymptomLog ? ", symptom check-in" : ""}`}
               title={
                 isPeriodDay
@@ -1270,7 +1346,9 @@ function CalendarPage() {
                 const record = entries.find((entry) => entry.startDate === dateString);
                 setSelectedDate(dateString);
                 setCalendarMessage("");
-                setSelectedPeriodLength(String(record?.periodLength || 5));
+                setSelectedPeriodEnd(record
+                  ? localDateStringForDate(addDays(parseDateOnly(dateString), record.periodLength - 1))
+                  : dateString);
                 setSelectedFlow(record?.flow || "medium");
                 setSelectedIsPeriod(Boolean(record));
               }}
@@ -1285,15 +1363,29 @@ function CalendarPage() {
         <section className="calendar-day-editor">
           <h3>{formatDate(selectedDate)}</h3>
           <label className="check-field">
-            <input type="checkbox" checked={selectedIsPeriod} onChange={(event) => setSelectedIsPeriod(event.target.checked)} />
+            <input type="checkbox" checked={selectedIsPeriod} onChange={(event) => {
+              setSelectedIsPeriod(event.target.checked);
+              if (event.target.checked && !selectedPeriodEnd) setSelectedPeriodEnd(selectedDate);
+            }} />
             Period started on this date
           </label>
           {selectedIsPeriod && (
             <>
-              <label className="field-label" htmlFor="calendar-period-length">Recorded duration</label>
-              <AnimatedSelect id="calendar-period-length" value={selectedPeriodLength} onChange={(event) => setSelectedPeriodLength(event.target.value)}>
-                {Array.from({ length: 10 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day} {day === 1 ? "day" : "days"}</option>)}
-              </AnimatedSelect>
+              <label className="field-label" htmlFor="calendar-period-end">Last day of this period</label>
+              <input
+                id="calendar-period-end"
+                type="date"
+                value={selectedPeriodEnd}
+                min={selectedDate}
+                max={localDateStringForDate(addDays(parseDateOnly(selectedDate), 9)) < localDateString()
+                  ? localDateStringForDate(addDays(parseDateOnly(selectedDate), 9))
+                  : localDateString()}
+                onChange={(event) => setSelectedPeriodEnd(event.target.value)}
+                required
+              />
+              <p className="privacy-hint">{selectedPeriodEnd && selectedPeriodEnd >= selectedDate
+                ? `${daysBetween(selectedDate, selectedPeriodEnd) + 1} day${daysBetween(selectedDate, selectedPeriodEnd) === 0 ? "" : "s"} recorded`
+                : "Choose a last day on or after the start date."}</p>
               <label className="field-label" htmlFor="calendar-flow">Flow</label>
               <AnimatedSelect id="calendar-flow" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
                 <option value="spotting">Spotting</option><option value="light">Light</option><option value="medium">Medium</option><option value="heavy">Heavy</option>
@@ -1306,11 +1398,20 @@ function CalendarPage() {
                 setCalendarMessage("Future dates cannot be saved as period starts.");
                 return;
               }
+              if (selectedIsPeriod && (!selectedPeriodEnd || selectedPeriodEnd < selectedDate || selectedPeriodEnd > localDateString())) {
+                setCalendarMessage("Choose a valid last day on or after the period start.");
+                return;
+              }
+              const periodLength = selectedIsPeriod ? daysBetween(selectedDate, selectedPeriodEnd) + 1 : null;
+              if (selectedIsPeriod && (periodLength < 1 || periodLength > 10)) {
+                setCalendarMessage("The recorded period must be between 1 and 10 days.");
+                return;
+              }
               const updated = entries.filter((entry) => entry.startDate !== selectedDate);
               if (selectedIsPeriod) updated.push({
                 ...(entries.find((entry) => entry.startDate === selectedDate) || {}),
                 startDate: selectedDate,
-                periodLength: Number(selectedPeriodLength),
+                periodLength,
                 flow: selectedFlow,
               });
               updated.sort((first, second) => first.startDate.localeCompare(second.startDate));
@@ -1345,6 +1446,7 @@ function CalendarPage() {
       )}
 
       <div className="calendar-legend" aria-label="Calendar legend">
+        <span><i className="legend-dot period-start-dot" />Period start</span>
         <span><i className="legend-dot" />Recorded period days</span>
         <span><i className="legend-dot estimated-dot" />Estimated period window</span>
         <span><i className="legend-dot symptom-dot" />Symptom check-in day</span>
@@ -1644,6 +1746,16 @@ function InsightsPage() {
         These are summaries of what you recorded, not medical findings or
         predictions. Missing logs can change the picture.
       </p>
+      <details className="insight-example">
+        <summary>See an example of how this works</summary>
+        <div className="insight-example-content">
+          <p><strong>Sample period starts:</strong> 1 Apr, 29 Apr, 27 May, 23 Jun</p>
+          <p>Days between starts: <strong>28, 28, and 27</strong></p>
+          <p><strong>Example result:</strong> average cycle 28 days; recorded range 27–28 days.</p>
+          <p>If “cramps” was logged once in each of those three cycles, the pattern would read: <strong>Cramps — recorded in 3 of 3 cycles.</strong></p>
+          <small>Sample data only. This does not change your saved records.</small>
+        </div>
+      </details>
       {cycles.length ? (
         <>
           <div className="symptom-stat-grid cycle-summary-grid">
@@ -1660,11 +1772,18 @@ function InsightsPage() {
               This is a simple summary, not a clinical assessment.
             </p>
           )}
+          <div className="cycle-history-heading">
+            <h3>Recorded cycle history</h3>
+            <span>{cycles.length} completed {cycles.length === 1 ? "cycle" : "cycles"}</span>
+          </div>
+          <p className="cycle-history-explanation">
+            Each bar shows the days from one recorded period start to the next. The average and range use all recorded intervals; the tracking label above checks the six most recent.
+          </p>
           <div className="cycle-history-chart" aria-label="Recorded cycle lengths">
             {cycles.slice(-12).map((cycle) => (
               <div className="cycle-chart-row" key={cycle.end}>
                 <span>{formatDate(cycle.start)}</span>
-                <div className="cycle-chart-track" role="img" aria-label={`${cycle.days} days between starts`}>
+                <div className="cycle-chart-track" role="progressbar" aria-label={`${cycle.days} days from this period start to the next`} aria-valuemin={0} aria-valuemax={maximum} aria-valuenow={cycle.days}>
                   <span className="cycle-chart-bar" style={{ width: `${Math.min(100, Math.max(8, (cycle.days / Math.max(maximum, 1)) * 100))}%` }} />
                 </div>
                 <strong>{cycle.days} d</strong>
@@ -1674,7 +1793,10 @@ function InsightsPage() {
           </div>
         </>
       ) : (
-        <p className="care-guidance-card">Record at least two period starts to see cycle history.</p>
+        <div className="insight-empty-state">
+          <h3>Cycle history will appear here</h3>
+          <p>Record at least two period start dates to see the days between them. Three starts are needed before the app can estimate your next period.</p>
+        </div>
       )}
       <section className="history-section">
         <h3>Patterns across cycles</h3>
@@ -1787,6 +1909,14 @@ function FloatingAssistant() {
   const [draft, setDraft] = useState("");
   const [aiError, setAiError] = useState("");
   const [isAskingAi, setIsAskingAi] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenMotion, setFullscreenMotion] = useState("");
+  const [showConsentOptions, setShowConsentOptions] = useState(false);
+  const closeTimer = useRef(null);
+  const openingTimer = useRef(null);
+  const fullscreenTimer = useRef(null);
   const launcherRef = useRef(null);
   const inputRef = useRef(null);
   const transcriptRef = useRef(null);
@@ -1800,11 +1930,46 @@ function FloatingAssistant() {
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen]);
+  }, [isOpen, aiConsent]);
+
+  useEffect(() => () => {
+    window.clearTimeout(closeTimer.current);
+    window.clearTimeout(openingTimer.current);
+    window.clearTimeout(fullscreenTimer.current);
+  }, []);
 
   function closeAssistant() {
-    setIsOpen(false);
-    window.requestAnimationFrame(() => launcherRef.current?.focus());
+    if (isClosing) return;
+    window.clearTimeout(openingTimer.current);
+    setIsOpening(false);
+    setIsClosing(true);
+    setShowConsentOptions(false);
+    closeTimer.current = window.setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+      setIsFullscreen(false);
+      setFullscreenMotion("");
+      window.requestAnimationFrame(() => launcherRef.current?.focus());
+    }, 220);
+  }
+
+  function openAssistant() {
+    window.clearTimeout(closeTimer.current);
+    window.clearTimeout(openingTimer.current);
+    setIsOpening(true);
+    setIsClosing(false);
+    setIsOpen(true);
+    openingTimer.current = window.setTimeout(() => setIsOpening(false), 420);
+  }
+
+  function toggleFullscreen() {
+    window.clearTimeout(fullscreenTimer.current);
+    window.clearTimeout(openingTimer.current);
+    setIsOpening(false);
+    const motion = isFullscreen ? "restoring" : "expanding";
+    setFullscreenMotion(motion);
+    setIsFullscreen((fullscreen) => !fullscreen);
+    fullscreenTimer.current = window.setTimeout(() => setFullscreenMotion(""), 420);
   }
 
   useEffect(() => {
@@ -1813,12 +1978,19 @@ function FloatingAssistant() {
     }
   }, [messages, isAskingAi]);
 
+  useEffect(() => {
+    if (!aiError) return undefined;
+    const errorTimer = window.setTimeout(() => setAiError(""), 2600);
+    return () => window.clearTimeout(errorTimer);
+  }, [aiError]);
+
   function updateConsent(consented) {
     setAiConsent(consented);
     setAiConsentState(consented);
     if (!consented) {
       setMessages([]);
       setAiError("");
+      setDraft("");
     }
   }
 
@@ -1856,20 +2028,61 @@ function FloatingAssistant() {
   return (
     <div className="floating-assistant">
       {isOpen && (
-        <section className="assistant-popover" id="assistant-popover" role="dialog" aria-labelledby="assistant-popover-title">
+        <section className={`assistant-popover ${isOpening ? "is-opening" : ""} ${isFullscreen ? "is-fullscreen" : ""} ${fullscreenMotion ? `is-${fullscreenMotion}` : ""} ${isClosing ? "is-closing" : ""}`} id="assistant-popover" role="dialog" aria-labelledby="assistant-popover-title">
           <header className="assistant-popover-header">
             <div>
-              <span className="assistant-popover-kicker">PRIVATE HEALTH EDUCATION</span>
-              <h2 id="assistant-popover-title">Ask Gemini AI</h2>
+              <span className="assistant-popover-kicker">Health Assistance</span>
+              <h2 id="assistant-popover-title">Cycle Care</h2>
             </div>
-            <button
-              className="assistant-close-button"
-              type="button"
-              onClick={closeAssistant}
-              aria-label="Close AI assistant"
-            >
-              <X size={19} />
-            </button>
+            <div className="assistant-header-actions">
+              <button
+                className="assistant-expand-button"
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Exit full screen" : "Expand AI assistant to full screen"}
+                title={isFullscreen ? "Exit full screen" : "Full screen"}
+              >
+                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              {aiConsent && (
+                <div className="assistant-consent-menu-wrap">
+                  <button
+                    className="assistant-consent-menu-trigger"
+                    type="button"
+                    aria-label="AI consent options"
+                    aria-haspopup="menu"
+                    aria-expanded={showConsentOptions}
+                    onClick={() => setShowConsentOptions((open) => !open)}
+                  >
+                    <ShieldCheck size={16} />
+                  </button>
+                  {showConsentOptions && (
+                    <div className="assistant-consent-menu" role="menu">
+                      <button
+                        className="assistant-consent-menu-item"
+                        type="button"
+                        role="menuitem"
+                        disabled={isAskingAi}
+                        onClick={() => {
+                          updateConsent(false);
+                          setShowConsentOptions(false);
+                        }}
+                      >
+                        Revoke AI consent
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                className="assistant-close-button"
+                type="button"
+                onClick={closeAssistant}
+                aria-label="Close AI assistant"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </header>
           <div className="assistant-transcript" ref={transcriptRef} aria-live="polite">
             {messages.length === 0 ? (
@@ -1896,48 +2109,47 @@ function FloatingAssistant() {
               </p>
             )}
           </div>
-          {aiError && <p className="assistant-error" role="status">{aiError}</p>}
-          <p className="assistant-disclaimer">General education only—not medical diagnosis or treatment. Each question is sent separately.</p>
-          <label className="ai-consent assistant-popover-consent">
-            <input
-              type="checkbox"
-              checked={aiConsent}
-              disabled={isAskingAi}
-              onChange={(event) => updateConsent(event.target.checked)}
-            />
-            <span>I agree to send only my question to Gemini AI for a cloud-generated educational response.</span>
-          </label>
-          <form className="assistant-chat-form" onSubmit={sendMessage}>
-            <textarea
-              ref={inputRef}
-              value={draft}
-              maxLength={2000}
-              rows={2}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Ask a health education question…"
-              aria-label="Your question for Gemini AI"
-            />
-            <button type="submit" disabled={!draft.trim() || (!aiConsent && !urgent) || isAskingAi} aria-label="Send question">
-              <Send size={18} />
-            </button>
-          </form>
-          {aiConsent && (
-            <button className="assistant-revoke-button" type="button" disabled={isAskingAi} onClick={() => updateConsent(false)}>
-              Revoke AI consent
-            </button>
+          {aiError && <div className="assistant-error-toast" role="alert">{aiError}</div>}
+          {!aiConsent && (
+            <label className="ai-consent assistant-popover-consent">
+              <input
+                type="checkbox"
+                checked={false}
+                onChange={() => updateConsent(true)}
+              />
+              <span>I agree to send only my question to Gemini AI for a cloud-generated educational response.</span>
+            </label>
+          )}
+          {aiConsent ? (
+            <form className="assistant-chat-form" onSubmit={sendMessage}>
+              <textarea
+                ref={inputRef}
+                value={draft}
+                maxLength={2000}
+                rows={2}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Ask a health education question…"
+                aria-label="Your question for Gemini AI"
+              />
+              <button type="submit" disabled={!draft.trim() || isAskingAi} aria-label="Send question">
+                <Send size={18} />
+              </button>
+            </form>
+          ) : (
+            <p className="assistant-consent-prompt">Select “I agree” above to open the question box.</p>
           )}
         </section>
       )}
       <button
         ref={launcherRef}
-        className={`assistant-launcher ${isOpen ? "is-open" : ""}`}
+        className={`assistant-launcher ${isOpen ? "is-open" : ""} ${isFullscreen || fullscreenMotion === "restoring" ? "is-hidden" : ""}`}
         type="button"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => (isOpen && !isClosing ? closeAssistant() : openAssistant())}
         aria-expanded={isOpen}
         aria-controls="assistant-popover"
         aria-label={isOpen ? "Close AI assistant panel" : "Open AI assistant chat"}
       >
-        {isOpen ? <X size={22} /> : <MessageCircle size={23} />}
+        {isOpen ? <X className="assistant-launcher-icon" size={22} /> : <MessageCircle className="assistant-launcher-icon" size={23} />}
         {!isOpen && <span>Ask AI</span>}
       </button>
     </div>
@@ -2139,7 +2351,7 @@ function PregnancyPage({ language }) {
   }
 
   return (
-    <section className="page-card">
+    <section className="page-card pregnancy-page">
       <span className="eyebrow">OPTIONAL LIFE-STAGE INFORMATION</span>
       <h2>{language === "hi" ? "गर्भावस्था जानकारी" : "Pregnancy information"}</h2>
       <p className="page-description">This optional information is not confirmation of pregnancy or a substitute for prenatal care.</p>
@@ -2301,6 +2513,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
   const [selectedSymptoms, setSelectedSymptoms] = useState(editRecord?.symptoms || []);
   const [entryDate, setEntryDate] = useState(editRecord?.date || localDateString());
   const [note, setNote] = useState(editRecord?.note || "");
+  const [flow, setFlow] = useState(editRecord?.flow || "");
   const [pain, setPain] = useState(editRecord?.pain || 0);
   const [painStopsActivities, setPainStopsActivities] = useState(editRecord?.painStopsActivities || false);
   const [bleedingBetweenPeriods, setBleedingBetweenPeriods] = useState(editRecord?.bleedingBetweenPeriods || false);
@@ -2319,6 +2532,27 @@ function SymptomsPage({ editRecord, onEditComplete }) {
 
   const symptoms = getTrackedSymptoms();
   const summary = getSymptomSummary(records);
+  const painBand = Number(pain) === 0 ? "none" : Number(pain) <= 3 ? "mild" : Number(pain) <= 6 ? "moderate" : "severe";
+
+  useEffect(() => {
+    if (!editRecord) return;
+    setSelectedSymptoms(editRecord.symptoms || []);
+    setEntryDate(editRecord.date || localDateString());
+    setNote(editRecord.note || "");
+    setFlow(editRecord.flow || "");
+    setPain(editRecord.pain || 0);
+    setPainStopsActivities(editRecord.painStopsActivities || false);
+    setBleedingBetweenPeriods(editRecord.bleedingBetweenPeriods || false);
+    setSuddenSevereLowerPain(editRecord.suddenSevereLowerPain || false);
+    setVeryHeavyWithFaintness(editRecord.veryHeavyWithFaintness || false);
+    setPregnancyPossibleWithSymptoms(editRecord.pregnancyPossibleWithSymptoms || false);
+    setMood(editRecord.mood || "okay");
+    setEnergy(editRecord.energy || "usual");
+    setSleepHours(editRecord.sleepHours == null ? "" : String(editRecord.sleepHours));
+    setMedicines(editRecord.medicines || "");
+    setSelfHarmConcern(editRecord.selfHarmConcern || false);
+    setMessage(`Editing check-in from ${formatDate(editRecord.date)}.`);
+  }, [editRecord?.id]);
 
   useEffect(() => {
     const refreshRecords = () => setRecords(getSymptomEntries());
@@ -2359,6 +2593,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
       date: entryDate,
       symptoms: selectedSymptoms,
       note,
+      flow,
       pain: Number(pain),
       painStopsActivities,
       bleedingBetweenPeriods,
@@ -2383,6 +2618,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
     setRecords(updatedRecords);
     setSelectedSymptoms([]);
     setNote("");
+    setFlow("");
     setPain(0);
     setPainStopsActivities(false);
     setBleedingBetweenPeriods(false);
@@ -2398,6 +2634,33 @@ function SymptomsPage({ editRecord, onEditComplete }) {
       ? "Your symptom check-in was updated on this device."
       : "Your symptom check-in was saved on this device.");
     onEditComplete?.();
+    window.dispatchEvent(new Event("cyclecare-symptoms-updated"));
+  }
+
+  function deleteSymptomRecord(record) {
+    if (!window.confirm(`Delete the symptom check-in from ${formatDate(record.date)}? This cannot be undone.`)) return;
+    const updatedRecords = records.filter((item) => item.id !== record.id);
+    setHealthItem("cyclecare_symptoms", JSON.stringify(updatedRecords));
+    setRecords(updatedRecords);
+    setMessage("Symptom check-in deleted from this device.");
+    if (editRecord?.id === record.id) {
+      onEditComplete?.();
+      setEntryDate(localDateString());
+      setSelectedSymptoms([]);
+      setNote("");
+      setFlow("");
+      setPain(0);
+      setPainStopsActivities(false);
+      setBleedingBetweenPeriods(false);
+      setSuddenSevereLowerPain(false);
+      setVeryHeavyWithFaintness(false);
+      setPregnancyPossibleWithSymptoms(false);
+      setMood("okay");
+      setEnergy("usual");
+      setSleepHours("");
+      setMedicines("");
+      setSelfHarmConcern(false);
+    }
     window.dispatchEvent(new Event("cyclecare-symptoms-updated"));
   }
 
@@ -2446,9 +2709,34 @@ function SymptomsPage({ editRecord, onEditComplete }) {
         </section>
 
         <section className="symptom-form-section" aria-labelledby="pain-heading">
+          <SelectionCards
+            legend="Bleeding flow today (optional)"
+            value={flow}
+            onChange={setFlow}
+            className="flow-selection-cards"
+            options={[
+              { value: "", label: "Skip", description: "Not tracking" },
+              { value: "spotting", label: "Spotting" },
+              { value: "light", label: "Light" },
+              { value: "medium", label: "Medium" },
+              { value: "heavy", label: "Heavy" },
+            ]}
+          />
           <label className="field-label" htmlFor="pain-level" id="pain-heading">
             Pain level <span>{pain} / 10</span>
           </label>
+          <SelectionCards
+            legend="Choose a pain range"
+            value={painBand}
+            onChange={(value) => setPain(value)}
+            className="pain-selection-cards"
+            options={[
+              { value: "none", selectValue: 0, label: "None", description: "0" },
+              { value: "mild", selectValue: 2, label: "Mild", description: "1–3" },
+              { value: "moderate", selectValue: 5, label: "Moderate", description: "4–6" },
+              { value: "severe", selectValue: 8, label: "Severe", description: "7–10" },
+            ]}
+          />
           <input
             id="pain-level"
             type="range"
@@ -2492,24 +2780,30 @@ function SymptomsPage({ editRecord, onEditComplete }) {
         </fieldset>
 
         <section className="symptom-form-section symptom-wellbeing-fields">
-          <div className="symptom-field">
-            <label className="field-label" htmlFor="mood">Mood today</label>
-            <AnimatedSelect id="mood" value={mood} onChange={(event) => setMood(event.target.value)}>
-              <option value="very-low">Very low</option>
-              <option value="low">Low</option>
-              <option value="okay">Okay</option>
-              <option value="good">Good</option>
-              <option value="very-good">Very good</option>
-            </AnimatedSelect>
-          </div>
-          <div className="symptom-field">
-            <label className="field-label" htmlFor="energy">Energy today</label>
-            <AnimatedSelect id="energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
-              <option value="low">Low</option>
-              <option value="usual">Usual</option>
-              <option value="high">High</option>
-            </AnimatedSelect>
-          </div>
+          <SelectionCards
+            legend="Mood today"
+            value={mood}
+            onChange={setMood}
+            className="mood-selection-cards"
+            options={[
+              { value: "very-low", label: "Very low" },
+              { value: "low", label: "Low" },
+              { value: "okay", label: "Okay" },
+              { value: "good", label: "Good" },
+              { value: "very-good", label: "Very good" },
+            ]}
+          />
+          <SelectionCards
+            legend="Energy today"
+            value={energy}
+            onChange={setEnergy}
+            className="energy-selection-cards"
+            options={[
+              { value: "low", label: "Low" },
+              { value: "usual", label: "Usual" },
+              { value: "high", label: "High" },
+            ]}
+          />
           <div className="symptom-field">
             <label className="field-label" htmlFor="sleep-hours">Sleep (hours, optional)</label>
             <input
@@ -2577,6 +2871,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
               setEntryDate(localDateString());
               setSelectedSymptoms([]);
               setNote("");
+              setFlow("");
               setPain(0);
               setPainStopsActivities(false);
               setBleedingBetweenPeriods(false);
@@ -2736,10 +3031,29 @@ function SymptomsPage({ editRecord, onEditComplete }) {
                       ? record.symptoms.join(", ")
                       : "No symptoms selected"}
                   </p>
+                  <p className="history-meta">
+                    {record.flow && `Flow: ${record.flow} · `}Pain: {record.pain}/10 · Mood: {record.mood.replaceAll("-", " ")} · Energy: {record.energy}
+                  </p>
 
                   {record.note && (
                     <p className="history-note">{record.note}</p>
                   )}
+                </div>
+                <div className="symptom-record-actions">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-edit-symptom", { detail: record }))}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="danger-button"
+                    type="button"
+                    onClick={() => deleteSymptomRecord(record)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
@@ -3034,7 +3348,7 @@ function SettingsPage({
   }
 
   return (
-    <section className="page-card">
+    <section className="page-card settings-page">
       <span className="eyebrow">YOUR DATA, YOUR CHOICE</span>
       <h2>Settings & Privacy</h2>
 
@@ -3619,6 +3933,9 @@ function getSymptomEntries() {
               (symptom) => typeof symptom === "string" && symptom.trim()
             )
           : [],
+        flow: ["spotting", "light", "medium", "heavy"].includes(entry.flow)
+          ? entry.flow
+          : "",
         note: typeof entry.note === "string" ? entry.note : "",
         pain: Number.isFinite(Number(entry.pain))
           ? Math.min(10, Math.max(0, Number(entry.pain)))

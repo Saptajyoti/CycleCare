@@ -41,6 +41,7 @@ export function validateImportData(data, { today, availableSymptoms }) {
       ) &&
       (entry.id === undefined || typeof entry.id === "string" || typeof entry.id === "number") &&
       (entry.note === undefined || typeof entry.note === "string") &&
+      (entry.flow === undefined || entry.flow === "" || periodFlows.includes(entry.flow)) &&
       (entry.pain === undefined ||
         (Number.isFinite(Number(entry.pain)) &&
           Number(entry.pain) >= 0 &&
