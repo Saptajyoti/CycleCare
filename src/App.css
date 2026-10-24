@@ -289,18 +289,7 @@ a:focus-visible {
   margin: 0;
 }
 
-.profile-badge {
-  width: 43px;
-  height: 43px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #f1dce5;
-  border-radius: 15px;
-  color: #bd5a7d;
-  background: #fff7fa;
-}
-
-.welcome-section {
+.welcome-section {
   min-height: 235px;
   padding: 37px 39px;
   position: relative;
@@ -1608,12 +1597,7 @@ button:disabled {
     justify-self: end;
   }
 
-  .profile-badge {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .device-switcher button {
+  .device-switcher button {
     padding: 0 10px;
   }
 
@@ -1637,12 +1621,7 @@ button:disabled {
     background: white;
   }
 
-  .profile-badge {
-    width: 39px;
-    height: 39px;
-  }
-
-  .welcome-section {
+  .welcome-section {
     padding: 27px 22px;
     min-height: auto;
   }
@@ -2408,14 +2387,7 @@ button:disabled {
     justify-self: end;
   }
 
-  .device-preview-mobile .profile-badge {
-    grid-column: 2;
-    grid-row: 1;
-    width: 39px;
-    height: 39px;
-  }
-
-  .device-preview-mobile .welcome-section {
+  .device-preview-mobile .welcome-section {
     min-height: auto;
     padding: 27px 22px;
   }
@@ -2759,15 +2731,14 @@ body {
 
 .topbar { min-height: 48px; }
 .topbar h2, .page-card > h2 { color: #292634; letter-spacing: -0.6px; }
-.profile-badge, .device-switcher {
+.device-switcher {
   border-color: var(--glass-border);
   background: rgba(255, 255, 255, 0.62);
   box-shadow: 0 8px 18px rgba(63, 47, 88, 0.07), inset 0 1px rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px) saturate(135%);
   -webkit-backdrop-filter: blur(16px) saturate(135%);
 }
-.profile-badge { color: #b65378; }
-.device-switcher button.device-switch-active { color: #a9486b; background: #fcecf2; }
+.device-switcher button.device-switch-active { color: #a9486b; background: #fcecf2; }
 
 .welcome-section {
   border-color: rgba(255, 255, 255, 0.76);
@@ -2819,7 +2790,7 @@ body {
 .mobile-navigation { display: none; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .sidebar, .profile-badge, .device-switcher { background: rgba(255, 255, 255, 0.96); }
+  .sidebar, .device-switcher { background: rgba(255, 255, 255, 0.96); }
 }
 
 @media (max-width: 700px) {
@@ -2863,7 +2834,7 @@ body {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .sidebar, .profile-badge, .device-switcher, .mobile-navigation { background: rgba(255, 255, 255, 0.97); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .sidebar, .device-switcher, .mobile-navigation { background: rgba(255, 255, 255, 0.97); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 .welcome-section h1,

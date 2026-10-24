@@ -460,9 +460,6 @@ function App() {
             </div>
           </div>
 
-          <div className="profile-badge">
-            {discreetMode ? <BookOpen size={19} /> : <Heart size={19} />}
-          </div>
         </header>
 
         <div className="page-transition" key={activePage}>
