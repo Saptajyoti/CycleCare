@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: cyclecare
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: ./dist

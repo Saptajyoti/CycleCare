@@ -42,7 +42,9 @@ the shell, pages, persistence operations, and content; reusable date and cycle
 estimate functions are in `src/utils/cycle.js`, with tests in
 `src/utils/cycle.test.js`. Learning content is also maintained in
 `src/content/healthLessons.js`. Styling is in `src/App.css` and `src/index.css`.
-Navigation is component-state based; there is no configured router or backend.
+Navigation is component-state based; there is no configured router. The
+optional Gemini assistant uses a separate Express backend in `server/`; core
+CycleCare functionality does not require it.
 
 `react-router-dom` and `recharts` are installed but not used by the current
 application.
@@ -94,6 +96,30 @@ npm run dev
 The frontend calls `http://localhost:5000/api/assistant` only after the user
 explicitly consents. That preference stays local to the browser and can be
 revoked from Ask.
+
+## Deploy to Render
+
+The frontend is a Vite static site rooted at the repository root. The included
+`render.yaml` configures its build command as:
+
+```bash
+npm ci --include=dev && npm run build
+```
+
+It publishes `dist`. Including devDependencies is intentional: Vite and its
+React plugin are build tools, and Render environments that omit
+devDependencies would otherwise fail with `vite: not found`. Keep these tools
+in the root `devDependencies`; do not move them into runtime dependencies.
+
+The Express service in `server/` is optional and is only needed for the
+consent-based Gemini assistant. If enabling it on Render, create a separate
+Web Service with `server` as its root directory, `npm ci` as its build command,
+and `npm start` as its start command. Set `GEMINI_API_KEY` as a secret and
+`CLIENT_ORIGIN` to the deployed frontend URL. Set
+`VITE_ASSISTANT_API_URL` on the static site to
+`https://<backend-service>.onrender.com/api/assistant`; this value is included
+at build time, so redeploy the frontend after changing it. Without the backend,
+the offline assistant and the rest of the frontend remain available.
 
 Available checks and commands:
 

@@ -1,4 +1,6 @@
-export const ASSISTANT_ENDPOINT = "http://localhost:5000/api/assistant";
+export const ASSISTANT_ENDPOINT =
+  import.meta.env?.VITE_ASSISTANT_API_URL ||
+  "http://localhost:5000/api/assistant";
 export const AI_CONSENT_STORAGE_KEY = "cyclecare_ai_consent";
 const ASSISTANT_TIMEOUT_MS = 35000;
 
