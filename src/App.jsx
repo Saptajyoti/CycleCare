@@ -2722,30 +2722,32 @@ function SymptomsPage({ editRecord, onEditComplete }) {
               { value: "heavy", label: "Heavy" },
             ]}
           />
-          <label className="field-label" htmlFor="pain-level" id="pain-heading">
-            Pain level <span>{pain} / 10</span>
-          </label>
-          <SelectionCards
-            legend="Choose a pain range"
-            value={painBand}
-            onChange={(value) => setPain(value)}
-            className="pain-selection-cards"
-            options={[
-              { value: "none", selectValue: 0, label: "None", description: "0" },
-              { value: "mild", selectValue: 2, label: "Mild", description: "1–3" },
-              { value: "moderate", selectValue: 5, label: "Moderate", description: "4–6" },
-              { value: "severe", selectValue: 8, label: "Severe", description: "7–10" },
-            ]}
-          />
-          <input
-            id="pain-level"
-            type="range"
-            min="0"
-            max="10"
-            value={pain}
-            style={{ "--pain-progress": `${Number(pain) * 10}%` }}
-            onChange={(event) => setPain(event.target.value)}
-          />
+          <div className="pain-level-control">
+            <label className="field-label" htmlFor="pain-level" id="pain-heading">
+              Pain level <span>{pain} / 10</span>
+            </label>
+            <SelectionCards
+              legend="Choose a pain range"
+              value={painBand}
+              onChange={(value) => setPain(value)}
+              className="pain-selection-cards"
+              options={[
+                { value: "none", selectValue: 0, label: "None", description: "0" },
+                { value: "mild", selectValue: 2, label: "Mild", description: "1–3" },
+                { value: "moderate", selectValue: 5, label: "Moderate", description: "4–6" },
+                { value: "severe", selectValue: 8, label: "Severe", description: "7–10" },
+              ]}
+            />
+            <input
+              id="pain-level"
+              type="range"
+              min="0"
+              max="10"
+              value={pain}
+              style={{ "--pain-progress": `${Number(pain) * 10}%` }}
+              onChange={(event) => setPain(event.target.value)}
+            />
+          </div>
           <label className="check-field">
             <input
               type="checkbox"
