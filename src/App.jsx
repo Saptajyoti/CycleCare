@@ -1331,6 +1331,7 @@ function CalendarPage() {
               key={day}
               type="button"
               disabled={dateString > localDateString()}
+              aria-pressed={selectedDate === dateString}
               className={`calendar-day ${
                 isPeriodDay ? "period-day" : ""
               } ${isPeriodStart ? "period-start-day" : ""} ${isPeriodEnd ? "period-end-day" : ""} ${isEstimatedDay && !isPeriodDay ? "estimated-day" : ""} ${hasSymptomLog ? "symptom-day" : ""} ${selectedDate === dateString ? "selected-calendar-day" : ""}`}
@@ -1360,7 +1361,7 @@ function CalendarPage() {
       </div>
 
       {selectedDate && (
-        <section className="calendar-day-editor">
+        <section className="calendar-day-editor" key={selectedDate}>
           <h3>{formatDate(selectedDate)}</h3>
           <label className="check-field">
             <input type="checkbox" checked={selectedIsPeriod} onChange={(event) => {
@@ -1374,6 +1375,7 @@ function CalendarPage() {
               <label className="field-label" htmlFor="calendar-period-end">Last day of this period</label>
               <input
                 id="calendar-period-end"
+                className="animated-date-input"
                 type="date"
                 value={selectedPeriodEnd}
                 min={selectedDate}
@@ -1387,7 +1389,7 @@ function CalendarPage() {
                 ? `${daysBetween(selectedDate, selectedPeriodEnd) + 1} day${daysBetween(selectedDate, selectedPeriodEnd) === 0 ? "" : "s"} recorded`
                 : "Choose a last day on or after the start date."}</p>
               <label className="field-label" htmlFor="calendar-flow">Flow</label>
-              <AnimatedSelect id="calendar-flow" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
+              <AnimatedSelect id="calendar-flow" className="calendar-flow-select" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
                 <option value="spotting">Spotting</option><option value="light">Light</option><option value="medium">Medium</option><option value="heavy">Heavy</option>
               </AnimatedSelect>
             </>
