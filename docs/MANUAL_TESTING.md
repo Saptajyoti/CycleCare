@@ -27,7 +27,8 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 - [ ] Care guidance: test a period longer than seven days, heavy-flow observations, three consecutive out-of-range cycles for each age setting, a 90-day gap, bleeding between periods, pain affecting activities, and high pain. Verify the observed dates, next step, and source shown for each trigger.
 - [ ] Urgent prompts: test urgent symptom checkboxes and wellbeing support with disposable data. Confirm app text directs users to outside help, identifies that it does not monitor emergencies, and includes cited sources where provided. Do not treat this as a triage test.
 - [ ] Visit summary: preview/print it and verify dates and optional record details; confirm it is labelled a personal record, not a diagnosis.
-- [ ] FAQ: test known English and Hindi questions, suggested questions, an unknown question, and urgent self-harm terms. Confirm it is offline and not presented as an AI assistant.
+- [ ] Offline answers: test known English and Hindi questions, suggested questions, an unknown question, and urgent self-harm terms. Confirm FAQ questions remain offline.
+- [ ] Floating AI assistant: open it on multiple dashboard pages and on a narrow viewport; verify the panel stays open during navigation, closes with Escape, requires consent before sending, retains the visible chat, and clears the conversation when consent is revoked. Verify urgent self-harm text receives local support guidance without being sent to the cloud.
 - [ ] Learn: open the PCOS and first-period lessons in both languages, verify citations, search/filter existing articles, and test read-aloud with and without browser speech support.
 
 ## Reminders and data controls

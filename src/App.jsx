@@ -32,6 +32,7 @@ import {
   Smartphone,
   Volume2,
   Trash2,
+  Send,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -39,6 +40,7 @@ import { AssistantMarkdown } from "./components/AssistantMarkdown";
 import { hasAiConsent, requestAssistantResponse, setAiConsent } from "./utils/assistant";
 
 import "./App.css";
+import "./assistant.css";
 
 const encryptedStorageKeys = [
   "cyclecare_periods",
@@ -61,7 +63,7 @@ const navigation = [
   { name: "My Symptoms", icon: Activity },
   { name: "Insights", icon: BarChart3 },
   { name: "Learn", icon: BookOpen },
-  { name: "Ask", icon: MessageCircle },
+  { name: "Offline answers", icon: MessageCircle },
   { name: "When to see a doctor", icon: Stethoscope },
   { name: "Reminders", icon: Bell },
   { name: "Pregnancy", icon: Baby },
@@ -479,7 +481,7 @@ function App() {
           <CareGuidancePage />
         ) : activePage === "Insights" ? (
           <InsightsPage />
-        ) : activePage === "Ask" ? (
+        ) : activePage === "Offline answers" ? (
           <AskPage language={language} />
         ) : activePage === "Reminders" ? (
           <RemindersPage discreetMode={discreetMode} />
@@ -503,6 +505,7 @@ function App() {
         )}
         </div>
       </main>
+      {!showOnboarding && !discreetMode && <FloatingAssistant />}
       <nav className="mobile-navigation" aria-label="Primary navigation">
         {[
           { name: "Overview", icon: LayoutDashboard, label: "Home" },
@@ -1730,12 +1733,6 @@ const frequentlyAskedQuestions = [
 
 function AskPage({ language }) {
   const [question, setQuestion] = useState("");
-  const [aiConsent, setAiConsentState] = useState(() => hasAiConsent());
-  const [aiQuestion, setAiQuestion] = useState("");
-  const [aiAnswer, setAiAnswer] = useState("");
-  const [aiError, setAiError] = useState("");
-  const [isAskingAi, setIsAskingAi] = useState(false);
-  const aiUrgent = /self.harm|hurt myself|kill myself/i.test(aiQuestion);
   const normalized = question.trim().toLocaleLowerCase(language === "hi" ? "hi" : "en");
   const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(question);
   const match = frequentlyAskedQuestions.find((item) => {
@@ -1743,67 +1740,18 @@ function AskPage({ language }) {
     return normalized && normalized.split(/\s+/).some((word) => word.length > 2 && searchable.includes(word));
   });
 
-  function updateConsent(consented) {
-    setAiConsent(consented);
-    setAiConsentState(consented);
-    if (!consented) {
-      setAiAnswer("");
-      setAiError("");
-    }
-  }
-
-  async function askAi(event) {
-    event.preventDefault();
-    const message = aiQuestion.trim();
-    if (!message || isAskingAi || !aiConsent || aiUrgent) return;
-    setIsAskingAi(true);
-    setAiAnswer("");
-    setAiError("");
-    try {
-      setAiAnswer(await requestAssistantResponse(message));
-    } catch (error) {
-      setAiError(error.message || "The AI assistant is temporarily unavailable.");
-    } finally {
-      setIsAskingAi(false);
-    }
-  }
-
   return (
     <section className="page-card">
       <span className="eyebrow">PRIVATE HEALTH EDUCATION</span>
-      <form className="assistant-form" onSubmit={askAi}>
-        <label className="field-label" htmlFor="ai-question">Ask Gemini AI</label>
-        <input id="ai-question" value={aiQuestion} maxLength="2000" onChange={(event) => { setAiQuestion(event.target.value); setAiAnswer(""); setAiError(""); }} placeholder="For example: What can help with period cramps?" />
-        <label className="ai-consent">
-          <input type="checkbox" checked={aiConsent} onChange={(event) => updateConsent(event.target.checked)} />
-          <span>I agree to send only this question to Gemini AI for a cloud-generated educational response. I will not include personal health records or identifying details.</span>
-        </label>
-        <div className="assistant-actions">
-          <button type="submit" disabled={!aiQuestion.trim() || !aiConsent || isAskingAi || aiUrgent}>
-            {isAskingAi ? <><span className="assistant-typing-dots" aria-hidden="true"><i /><i /><i /></span> Gemini is thinking</> : "Ask Gemini AI"}
-          </button>
-          {aiConsent && <button type="button" className="secondary-button" onClick={() => updateConsent(false)}>Revoke AI consent</button>}
-        </div>
-      </form>
-      {aiAnswer && (
-        <article className="faq-answer ai-answer" aria-live="polite">
-          <h3>Gemini AI response</h3>
-          <div className="ai-answer-content">
-            <AssistantMarkdown content={aiAnswer} />
-          </div>
-          <p className="article-disclaimer">General education only, not medical diagnosis or treatment. Seek urgent medical care for severe pain, heavy bleeding, fainting, trouble breathing, or a possible pregnancy emergency.</p>
-        </article>
-      )}
-      {aiError && <p className="assistant-error" role="status">{aiError} Showing the offline assistant below.</p>}
       <h2>{language === "hi" ? "अपना सवाल पूछें" : "Ask a question"}</h2>
       <p className="page-description">
-        {language === "hi" ? "उत्तर इस डिवाइस पर उपलब्ध जानकारी से मिलते हैं। यह निदान नहीं करता।" : "Answers come from a small, offline set of sourced information. No question is sent to a server, and this is not diagnosis."}
+        {language === "hi" ? "उत्तर इस डिवाइस पर उपलब्ध जानकारी से मिलते हैं। यह निदान नहीं करता।" : "Find answers from this device's offline, sourced information. No question is sent to a server, and this is not diagnosis."}
       </p>
       <label className="field-label" htmlFor="faq-question">
         {language === "hi" ? "लक्षण या सवाल लिखें" : "Enter a topic or question"}
       </label>
       <input id="faq-question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={language === "hi" ? "उदाहरण: अनियमित पीरियड" : "For example: irregular periods"} />
-      {urgent || aiUrgent ? (
+      {urgent ? (
         <article className="wellbeing-support" role="alert">
           <h3>Support is available now</h3>
           <p>Tele-MANAS: call 14416 in India. If you may act on thoughts of self-harm or are in immediate danger, contact local emergency services or go to an emergency department.</p>
@@ -1830,8 +1778,172 @@ function AskPage({ language }) {
           ))}
         </div>
       )}
-      <p className="privacy-hint">{frequentlyAskedQuestions.length} offline answers are always available. AI consent is stored only in this browser and can be revoked above.</p>
+      <p className="privacy-hint">{frequentlyAskedQuestions.length} offline answers are always available. For a cloud-generated educational response, open the floating AI assistant and review its consent options.</p>
     </section>
+  );
+}
+
+function FloatingAssistant() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [aiConsent, setAiConsentState] = useState(() => hasAiConsent());
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [isAskingAi, setIsAskingAi] = useState(false);
+  const launcherRef = useRef(null);
+  const inputRef = useRef(null);
+  const transcriptRef = useRef(null);
+  const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(draft);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    inputRef.current?.focus();
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") closeAssistant();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isOpen]);
+
+  function closeAssistant() {
+    setIsOpen(false);
+    window.requestAnimationFrame(() => launcherRef.current?.focus());
+  }
+
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [messages, isAskingAi]);
+
+  function updateConsent(consented) {
+    setAiConsent(consented);
+    setAiConsentState(consented);
+    if (!consented) {
+      setMessages([]);
+      setAiError("");
+    }
+  }
+
+  async function sendMessage(event) {
+    event.preventDefault();
+    const message = draft.trim();
+    const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(message);
+    if (!message || isAskingAi || (!aiConsent && !urgent)) return;
+
+    setDraft("");
+    setAiError("");
+    if (urgent) {
+      setMessages((current) => [...current,
+        { role: "user", content: message },
+        {
+          role: "safety",
+          content: "If you may act on thoughts of self-harm or are in immediate danger, contact local emergency services or go to an emergency department. In India, you can call Tele-MANAS at 14416.",
+        },
+      ]);
+      return;
+    }
+
+    setMessages((current) => [...current, { role: "user", content: message }]);
+    setIsAskingAi(true);
+    try {
+      const answer = await requestAssistantResponse(message);
+      setMessages((current) => [...current, { role: "assistant", content: answer }]);
+    } catch (error) {
+      setAiError(error.message || "The AI assistant is temporarily unavailable.");
+    } finally {
+      setIsAskingAi(false);
+    }
+  }
+
+  return (
+    <div className="floating-assistant">
+      {isOpen && (
+        <section className="assistant-popover" id="assistant-popover" role="dialog" aria-labelledby="assistant-popover-title">
+          <header className="assistant-popover-header">
+            <div>
+              <span className="assistant-popover-kicker">PRIVATE HEALTH EDUCATION</span>
+              <h2 id="assistant-popover-title">Ask Gemini AI</h2>
+            </div>
+            <button
+              className="assistant-close-button"
+              type="button"
+              onClick={closeAssistant}
+              aria-label="Close AI assistant"
+            >
+              <X size={19} />
+            </button>
+          </header>
+          <div className="assistant-transcript" ref={transcriptRef} aria-live="polite">
+            {messages.length === 0 ? (
+              <p className="assistant-welcome">Ask an educational question. Please do not include personal health records or identifying details.</p>
+            ) : messages.map((message, index) => (
+              <article className={`assistant-message assistant-message-${message.role}`} key={`${message.role}-${index}`}>
+                {message.role === "assistant" ? (
+                  <AssistantMarkdown content={message.content} />
+                ) : message.role === "safety" ? (
+                  <>
+                    <strong>Support is available now</strong>
+                    <p>{message.content}</p>
+                    <a href="https://telemanas.mohfw.gov.in/" target="_blank" rel="noreferrer">Tele-MANAS support</a>
+                  </>
+                ) : (
+                  <p>{message.content}</p>
+                )}
+              </article>
+            ))}
+            {isAskingAi && (
+              <p className="assistant-thinking" role="status">
+                <span className="assistant-typing-dots" aria-hidden="true"><i /><i /><i /></span>
+                Gemini is thinking
+              </p>
+            )}
+          </div>
+          {aiError && <p className="assistant-error" role="status">{aiError}</p>}
+          <p className="assistant-disclaimer">General education only—not medical diagnosis or treatment. Each question is sent separately.</p>
+          <label className="ai-consent assistant-popover-consent">
+            <input
+              type="checkbox"
+              checked={aiConsent}
+              disabled={isAskingAi}
+              onChange={(event) => updateConsent(event.target.checked)}
+            />
+            <span>I agree to send only my question to Gemini AI for a cloud-generated educational response.</span>
+          </label>
+          <form className="assistant-chat-form" onSubmit={sendMessage}>
+            <textarea
+              ref={inputRef}
+              value={draft}
+              maxLength={2000}
+              rows={2}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Ask a health education question…"
+              aria-label="Your question for Gemini AI"
+            />
+            <button type="submit" disabled={!draft.trim() || (!aiConsent && !urgent) || isAskingAi} aria-label="Send question">
+              <Send size={18} />
+            </button>
+          </form>
+          {aiConsent && (
+            <button className="assistant-revoke-button" type="button" disabled={isAskingAi} onClick={() => updateConsent(false)}>
+              Revoke AI consent
+            </button>
+          )}
+        </section>
+      )}
+      <button
+        ref={launcherRef}
+        className={`assistant-launcher ${isOpen ? "is-open" : ""}`}
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-controls="assistant-popover"
+        aria-label={isOpen ? "Close AI assistant panel" : "Open AI assistant chat"}
+      >
+        {isOpen ? <X size={22} /> : <MessageCircle size={23} />}
+        {!isOpen && <span>Ask AI</span>}
+      </button>
+    </div>
   );
 }
 

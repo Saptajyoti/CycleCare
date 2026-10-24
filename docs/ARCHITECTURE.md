@@ -2,9 +2,9 @@
 
 ## Application structure
 
-CycleCare is a Vite-served React single-page application. `src/main.jsx` mounts `App` from `src/App.jsx`; `App.css` and `index.css` provide styles. Date-only and cycle-estimate helpers live in `src/utils/cycle.js` and are covered by Node's built-in test runner. There is no backend, API client, database, authentication service, service worker, or router configuration. Navigation is held in React state.
+CycleCare is a Vite-served React single-page application. `src/main.jsx` mounts `App` from `src/App.jsx`; `App.css`, `assistant.css`, and `index.css` provide styles. Date-only and cycle-estimate helpers live in `src/utils/cycle.js` and are covered by Node's built-in test runner. There is no database, authentication service, service worker, or router configuration. Navigation is held in React state.
 
-`App` owns the active page, mobile menu, onboarding state, language, age group, pregnancy-information visibility, Discreet Mode, and optional vault lock state. It renders Overview, My Calendar, My Symptoms, Insights, Learn, Ask, When to see a doctor, Reminders, Pregnancy, or Settings. Custom `cyclecare-navigate` and `cyclecare-edit-symptom` events connect in-app navigation and calendar-to-symptom editing. The Overview distinguishes saved period history from an estimated period window, shows recent recorded check-ins, and links to logged-record-based care guidance. Self-care cards contain original lightweight SVG illustrations; these suggestions do not make treatment claims.
+`App` owns the active page, mobile menu, onboarding state, language, age group, pregnancy-information visibility, Discreet Mode, and optional vault lock state. It renders Overview, My Calendar, My Symptoms, Insights, Learn, Offline answers, When to see a doctor, Reminders, Pregnancy, or Settings. The consent-gated Gemini assistant is a floating chat panel available across dashboard pages outside onboarding and Discreet Mode. Custom `cyclecare-navigate` and `cyclecare-edit-symptom` events connect in-app navigation and calendar-to-symptom editing. The Overview distinguishes saved period history from an estimated period window, shows recent recorded check-ins, and links to logged-record-based care guidance. Self-care cards contain original lightweight SVG illustrations; these suggestions do not make treatment claims.
 
 ## Onboarding and records
 
@@ -30,7 +30,7 @@ Insights show averages, ranges, up to twelve recent logged cycle intervals, symp
 
 The care page includes an urgent-help warning, links to NHS guidance, India eSanjeevani information, and a printable visit summary. Symptom check-ins also show urgent-support guidance for selected warning signs; the wellbeing prompt links to Tele-MANAS. Users are told not to wait for the app during an emergency. Emergency-service availability and clinical guidance should be checked locally and periodically; the app cannot contact services for the user.
 
-Learn combines the existing article collection with separately maintained English/Hindi lessons in `src/content/healthLessons.js`. Topics include PCOS, first periods, heavy bleeding, irregular timing, period pain, missed periods, and endometriosis. Each added health lesson links to its named NHS source. Read-aloud uses browser speech synthesis when available. Ask is an offline keyword match against a finite FAQ, not an AI assistant or a general-purpose question-answer service; it displays a fallback when there is no match.
+Learn combines the existing article collection with separately maintained English/Hindi lessons in `src/content/healthLessons.js`. Topics include PCOS, first periods, heavy bleeding, irregular timing, period pain, missed periods, and endometriosis. Each added health lesson links to its named NHS source. Read-aloud uses browser speech synthesis when available. Offline answers is a keyword match against a finite FAQ and displays a fallback when there is no match. The floating Gemini assistant sends only the submitted question after browser-stored consent; each question is handled independently.
 
 ## Reminders and pregnancy information
 
@@ -50,6 +50,6 @@ Settings provide JSON and CSV exports, JSON import, and deletion of all keys beg
 
 Settings include text-size and high-contrast preferences; reduced-motion styles and responsive layouts are present. The app should still be manually checked at 360 px, with keyboard-only operation and a screen reader.
 
-There is no moderated community, AI assistant, full Hindi translation, or embedded pregnancy-week curriculum. `npm test` runs focused date and cycle-estimate tests; browser workflows and accessibility still require manual checks. Health copy and guidance rules need appropriate clinical and local review before real-world medical use.
+There is no moderated community, full Hindi translation, or embedded pregnancy-week curriculum. `npm test` runs focused date and cycle-estimate tests; browser workflows and accessibility still require manual checks. Health copy and guidance rules need appropriate clinical and local review before real-world medical use.
 
 Vite uses its default root base path. Static paths beginning with `/` assume root hosting unless `base` is configured for subpath deployment.
