@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
 import { CycleCareLogo } from "./components/CycleCareLogo";
+import { AssistantMarkdown } from "./components/AssistantMarkdown";
+import { hasAiConsent, requestAssistantResponse, setAiConsent } from "./utils/assistant";
 
 import "./App.css";
 
@@ -1728,6 +1730,12 @@ const frequentlyAskedQuestions = [
 
 function AskPage({ language }) {
   const [question, setQuestion] = useState("");
+  const [aiConsent, setAiConsentState] = useState(() => hasAiConsent());
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [isAskingAi, setIsAskingAi] = useState(false);
+  const aiUrgent = /self.harm|hurt myself|kill myself/i.test(aiQuestion);
   const normalized = question.trim().toLocaleLowerCase(language === "hi" ? "hi" : "en");
   const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(question);
   const match = frequentlyAskedQuestions.find((item) => {
@@ -1735,9 +1743,58 @@ function AskPage({ language }) {
     return normalized && normalized.split(/\s+/).some((word) => word.length > 2 && searchable.includes(word));
   });
 
+  function updateConsent(consented) {
+    setAiConsent(consented);
+    setAiConsentState(consented);
+    if (!consented) {
+      setAiAnswer("");
+      setAiError("");
+    }
+  }
+
+  async function askAi(event) {
+    event.preventDefault();
+    const message = aiQuestion.trim();
+    if (!message || isAskingAi || !aiConsent || aiUrgent) return;
+    setIsAskingAi(true);
+    setAiAnswer("");
+    setAiError("");
+    try {
+      setAiAnswer(await requestAssistantResponse(message));
+    } catch (error) {
+      setAiError(error.message || "The AI assistant is temporarily unavailable.");
+    } finally {
+      setIsAskingAi(false);
+    }
+  }
+
   return (
     <section className="page-card">
-      <span className="eyebrow">PRIVATE, OFFLINE ANSWERS</span>
+      <span className="eyebrow">PRIVATE HEALTH EDUCATION</span>
+      <form className="assistant-form" onSubmit={askAi}>
+        <label className="field-label" htmlFor="ai-question">Ask Gemini AI</label>
+        <input id="ai-question" value={aiQuestion} maxLength="2000" onChange={(event) => { setAiQuestion(event.target.value); setAiAnswer(""); setAiError(""); }} placeholder="For example: What can help with period cramps?" />
+        <label className="ai-consent">
+          <input type="checkbox" checked={aiConsent} onChange={(event) => updateConsent(event.target.checked)} />
+          <span>I agree to send only this question to Gemini AI for a cloud-generated educational response. I will not include personal health records or identifying details.</span>
+        </label>
+        <div className="assistant-actions">
+          <button type="submit" disabled={!aiQuestion.trim() || !aiConsent || isAskingAi || aiUrgent}>
+            {isAskingAi ? <><span className="assistant-typing-dots" aria-hidden="true"><i /><i /><i /></span> Gemini is thinking</> : "Ask Gemini AI"}
+          </button>
+          {aiConsent && <button type="button" className="secondary-button" onClick={() => updateConsent(false)}>Revoke AI consent</button>}
+        </div>
+      </form>
+      {aiAnswer && (
+        <article className="faq-answer ai-answer" aria-live="polite">
+          <h3>Gemini AI response</h3>
+          <div className="ai-answer-content">
+            <AssistantMarkdown content={aiAnswer} />
+          </div>
+          <p className="article-disclaimer">General education only, not medical diagnosis or treatment. Seek urgent medical care for severe pain, heavy bleeding, fainting, trouble breathing, or a possible pregnancy emergency.</p>
+        </article>
+      )}
+      {aiError && <p className="assistant-error" role="status">{aiError} Showing the offline assistant below.</p>}
       <h2>{language === "hi" ? "अपना सवाल पूछें" : "Ask a question"}</h2>
       <p className="page-description">
         {language === "hi" ? "उत्तर इस डिवाइस पर उपलब्ध जानकारी से मिलते हैं। यह निदान नहीं करता।" : "Answers come from a small, offline set of sourced information. No question is sent to a server, and this is not diagnosis."}
@@ -1746,7 +1803,7 @@ function AskPage({ language }) {
         {language === "hi" ? "लक्षण या सवाल लिखें" : "Enter a topic or question"}
       </label>
       <input id="faq-question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={language === "hi" ? "उदाहरण: अनियमित पीरियड" : "For example: irregular periods"} />
-      {urgent ? (
+      {urgent || aiUrgent ? (
         <article className="wellbeing-support" role="alert">
           <h3>Support is available now</h3>
           <p>Tele-MANAS: call 14416 in India. If you may act on thoughts of self-harm or are in immediate danger, contact local emergency services or go to an emergency department.</p>
@@ -1773,7 +1830,7 @@ function AskPage({ language }) {
           ))}
         </div>
       )}
-      <p className="privacy-hint">{frequentlyAskedQuestions.length} offline answers available. Health guidance is linked to its source where applicable.</p>
+      <p className="privacy-hint">{frequentlyAskedQuestions.length} offline answers are always available. AI consent is stored only in this browser and can be revoked above.</p>
     </section>
   );
 }
