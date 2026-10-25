@@ -28,6 +28,33 @@ test("urgent guidance covers sudden severe pain and pregnancy warning symptoms",
   );
 });
 
+test("screens urgent symptom descriptions in English and Hindi", () => {
+  const urgentQuestions = [
+    "I am bleeding heavily and feel faint",
+    "I am soaking pads and feel dizzy",
+    "I have sudden unbearable cramps",
+    "I am pregnant and bleeding",
+    "बहुत ज्यादा खून बह रहा है और चक्कर आ रहे हैं",
+    "गर्भवती हूँ और रक्तस्राव हो रहा है",
+    "गर्भावस्था में तेज पेट दर्द है",
+    "अचानक असहनीय पेट दर्द हो रहा है",
+    "मैं मरना चाहती हूँ",
+  ];
+
+  for (const question of urgentQuestions) {
+    assert.equal(
+      getHealthSafetyGuidance(question)?.category,
+      "urgent",
+      `Expected urgent local guidance for: ${question}`
+    );
+  }
+
+  assert.equal(
+    getHealthSafetyGuidance("मासिक धर्म में हल्का दर्द होना सामान्य है?"),
+    null
+  );
+});
+
 test("misspelled, indirect and ambiguous period concerns receive fixed medical guidance", () => {
   assert.equal(
     getHealthSafetyGuidance("My cycles are irreglar, should I worry?")?.category,

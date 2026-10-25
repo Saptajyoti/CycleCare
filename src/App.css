@@ -16,7 +16,151 @@
   --motion-fast: 180ms;
   --motion-standard: 240ms;
   --motion-ease: cubic-bezier(0.2, 0.7, 0.25, 1);
-}
+}
+
+.dashboard-trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.dashboard-trends {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-trends-heading h2 {
+  margin: 8px 0;
+  color: var(--text);
+  font-size: 21px;
+}
+
+.dashboard-trends-heading p,
+.dashboard-trend-card > p {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.dashboard-trend-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--page-bg);
+}
+
+.dashboard-trend-card h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.dashboard-trend-card > p {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.dashboard-trend-list {
+  display: grid;
+  gap: 13px;
+}
+
+.dashboard-trend-row {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dashboard-trend-label,
+.dashboard-trend-meter > span {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-trend-metrics {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-trend-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.dashboard-trend-meter > span {
+  grid-column: 1 / -1;
+}
+
+.dashboard-trend-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1e7ec;
+}
+
+.dashboard-trend-track > span {
+  display: block;
+  min-width: 4px;
+  height: 100%;
+  border-radius: inherit;
+  background: #8d3158;
+}
+
+.period-duration-track > span {
+  background: #72538b;
+}
+
+.symptom-trend-track > span {
+  background: #a9486b;
+}
+
+.mood-trend-track > span {
+  background: #456b63;
+}
+
+.dashboard-trend-meter strong {
+  min-width: 1.4em;
+  color: var(--text);
+  font-size: 14px;
+  text-align: right;
+}
+
+.estimate-variation-note {
+  padding: 10px 12px;
+  border-left: 3px solid #8d3158;
+  background: #fff7f9;
+  color: #553044;
+}
+
+:root.high-contrast .dashboard-trend-track {
+  background: #e5e5e5;
+}
+
+:root.high-contrast .estimate-variation-note {
+  border-left-color: #152c7a;
+  background: #fff;
+  color: #1b1720;
+}
+
+@media (max-width: 390px) {
+  .dashboard-trends {
+    padding: 16px;
+  }
+
+  .dashboard-trend-card {
+    padding: 14px;
+  }
+}
 
 #root .page-description,
 #root .privacy-hint,

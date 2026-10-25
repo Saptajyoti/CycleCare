@@ -132,6 +132,8 @@ export function getCycleEstimate(entries, confirmedGap = "") {
     historyStatus: intervals.length < 3 ? "limited" : "sufficient",
     medianCycleLength,
     isIrregular,
+    intervalSpread,
+    recentIntervals: intervalLengths,
     spreadDays,
     nextStart,
     windowStart: addDays(nextStart, -spreadDays),

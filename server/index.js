@@ -215,8 +215,11 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT ?? 5000);
+if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) {
+  throw new Error("PORT must be an integer between 0 and 65535.");
+}
 
-app.listen(PORT, () => {
-  console.log(`CycleCare API running on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`CycleCare API running on port ${server.address().port}`);
 });

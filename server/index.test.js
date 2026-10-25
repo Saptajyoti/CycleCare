@@ -1,52 +1,72 @@
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
-const { createServer } = require("node:net");
 const { after, before, test } = require("node:test");
 
 let backend;
 let baseUrl;
 
-async function getAvailablePort() {
-  const server = createServer();
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-  const { port } = server.address();
-  await new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-  });
-  return port;
-}
-
 before(async () => {
-  const port = await getAvailablePort();
-  baseUrl = `http://127.0.0.1:${port}`;
+  let startupOutput = "";
+  let startupError = "";
+  let resolveStartup;
+  let rejectStartup;
+  const startup = new Promise((resolve, reject) => {
+    resolveStartup = resolve;
+    rejectStartup = reject;
+  });
+
   backend = spawn(process.execPath, ["index.js"], {
     cwd: __dirname,
     env: {
       ...process.env,
       CLIENT_ORIGIN: "https://additional-cyclecare-origin.example",
       GEMINI_API_KEY: "test-only-not-a-real-key",
-      PORT: String(port),
+      PORT: "0",
     },
-    stdio: "ignore",
+    stdio: ["ignore", "pipe", "pipe"],
   });
 
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    if (backend.exitCode !== null) {
-      throw new Error(`Backend exited during startup with code ${backend.exitCode}`);
+  backend.stdout.setEncoding("utf8");
+  backend.stderr.setEncoding("utf8");
+  backend.stdout.on("data", (chunk) => {
+    startupOutput += chunk;
+    const match = /CycleCare API running on port (\d+)/.exec(startupOutput);
+    if (match) {
+      baseUrl = `http://127.0.0.1:${match[1]}`;
+      resolveStartup();
     }
-    try {
-      const response = await fetch(`${baseUrl}/api/health`);
-      if (response.ok) return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+  backend.stderr.on("data", (chunk) => {
+    startupError += chunk;
+  });
+  backend.once("error", rejectStartup);
+  backend.once("exit", (code, signal) => {
+    if (!baseUrl) {
+      rejectStartup(new Error(
+        `Backend exited during startup (${signal || code}). ${startupError || startupOutput}`
+      ));
     }
+  });
+
+  let timeout;
+  try {
+    await Promise.race([
+      startup,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(
+          `Backend did not start before the test timeout. ${startupError || startupOutput}`
+        )), 5000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
   }
-  throw new Error("Backend did not start before the test timeout");
+
+  const response = await fetch(`${baseUrl}/api/health`);
+  if (!response.ok) {
+    throw new Error(`Backend health check failed with status ${response.status}.`);
+  }
 });
 
 after(async () => {
@@ -147,4 +167,43 @@ test("backend returns fixed medical guidance for misspelled symptoms", async () 
   assert.equal(payload.safety, true);
   assert.equal(payload.category, "medical");
   assert.match(payload.answer, /qualified healthcare professional/i);
+});
+
+test("backend detects urgent English and Hindi symptoms before contacting Gemini", async () => {
+  for (const message of [
+    "I am bleeding heavily and feel faint",
+    "I have sudden unbearable cramps",
+    "बहुत ज्यादा खून बह रहा है और चक्कर आ रहे हैं",
+    "गर्भवती हूँ और रक्तस्राव हो रहा है",
+  ]) {
+    const response = await fetch(`${baseUrl}/api/assistant`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, consent: true }),
+    });
+    assert.equal(response.status, 200, message);
+    const payload = await response.json();
+    assert.equal(payload.safety, true, message);
+    assert.equal(payload.category, "urgent", message);
+  }
+});
+
+test("backend reports invalid port configuration during startup", async () => {
+  const invalidServer = spawn(process.execPath, ["index.js"], {
+    cwd: __dirname,
+    env: {
+      ...process.env,
+      GEMINI_API_KEY: "test-only-not-a-real-key",
+      PORT: "not-a-port",
+    },
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  let stderr = "";
+  invalidServer.stderr.setEncoding("utf8");
+  invalidServer.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const [code] = await once(invalidServer, "exit");
+  assert.notEqual(code, 0);
+  assert.match(stderr, /PORT must be an integer between 0 and 65535/);
 });

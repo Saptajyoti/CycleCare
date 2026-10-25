@@ -112,7 +112,22 @@ test("widens uncertain estimates for irregular recent intervals", () => {
 
   assert.equal(estimate?.isIrregular, true);
   assert.equal(estimate?.medianCycleLength, 28);
+  assert.equal(estimate?.intervalSpread, 10);
+  assert.deepEqual(estimate?.recentIntervals, [28, 28, 28, 38]);
   assert.equal(estimate?.spreadDays, 10);
+});
+
+test("keeps a confirmed long gap visible in the estimate calculation", () => {
+  const periods = datesFromIntervals([28, 29, 28, 45]);
+  const review = getCycleEstimate(periods);
+  const estimate = getCycleEstimate(periods, review.gapKey);
+
+  assert.equal(estimate?.needsReview, undefined);
+  assert.deepEqual(estimate?.recentIntervals, [28, 29, 28, 45]);
+  assert.equal(estimate?.isIrregular, true);
+  assert.equal(estimate?.medianCycleLength, 29);
+  assert.ok(estimate?.windowStart < estimate?.nextStart);
+  assert.ok(estimate?.windowEnd > estimate?.nextStart);
 });
 
 test("calculates a date window across a year boundary", () => {

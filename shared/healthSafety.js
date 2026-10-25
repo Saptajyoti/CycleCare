@@ -59,6 +59,9 @@ export function getHealthSafetyGuidance(question) {
   const mentionsBleeding = includesTerm(text, tokens, [
     "bleed", "bleeding", "period", "spotting", "रक्तस्राव", "खून",
   ]);
+  const mentionsPeriodProduct = includesTerm(text, tokens, [
+    "pad", "pads", "tampon", "tampons", "menstrual cup", "पैड",
+  ]);
   const mentionsPain = includesTerm(text, tokens, [
     "pain", "cramp", "cramps", "ache", "hurting", "दर्द", "ऐंठन",
   ]);
@@ -84,10 +87,11 @@ export function getHealthSafetyGuidance(question) {
     );
   }
 
-  const mentionsHeavyBleeding = mentionsBleeding && includesTerm(text, tokens, [
-    "heavy", "heavily", "soaking", "soaked", "flooding", "flood",
-    "a lot", "too much", "बहुत ज्यादा", "बहुत अधिक",
-  ]);
+  const mentionsHeavyBleeding =
+    (mentionsBleeding || mentionsPeriodProduct) && includesTerm(text, tokens, [
+      "heavy", "heavily", "soaking", "soaked", "flooding", "flood",
+      "a lot", "too much", "बहुत ज्यादा", "बहुत अधिक",
+    ]);
   const changingProductHourly =
     /\b(every|each|per)\s+(?:single\s+)?(?:hour|hr)\b/.test(text) ||
     /\b(every|each|per)\s+(?:1\s+2|one(?:\s+to\s+two)?|two)\s+(?:hours?|hrs?)\b/.test(text) ||

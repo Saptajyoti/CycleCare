@@ -55,6 +55,12 @@ import { upsertPeriodRecord, upsertSymptomRecord } from "./utils/trackingRecords
 import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
 import { AssistantMarkdown } from "./components/AssistantMarkdown";
+
+const DashboardTrends = React.lazy(() =>
+  import("./components/DashboardTrends").then((module) => ({
+    default: module.DashboardTrends,
+  }))
+);
 import {
   hasAiConsent,
   protectAssistantAnswer,
@@ -1025,6 +1031,15 @@ function Dashboard({ discreetMode, language }) {
                     : `${t("sufficientHistory")}: ${language === "hi" ? `${cycleEstimate.cyclesUsed} हाल के दर्ज चक्रों पर आधारित।` : `based on ${cycleEstimate.cyclesUsed} recent recorded cycles.`}`}
                 </p>
                 <p>{t("method")}</p>
+                <p>
+                  {t("calculationDetails")
+                    .replace("{intervals}", cycleEstimate.recentIntervals.join(", "))
+                    .replace("{median}", String(cycleEstimate.medianCycleLength))
+                    .replace("{spread}", String(cycleEstimate.spreadDays))}
+                </p>
+                {cycleEstimate.isIrregular && (
+                  <p className="estimate-variation-note">{t("irregularEstimateNote")}</p>
+                )}
               </>
             ) : cycleEstimate?.needsReview ? (
               <p>{t("needsReview")}</p>
@@ -1063,6 +1078,24 @@ function Dashboard({ discreetMode, language }) {
             {cycleEstimate?.needsReview ? t("reviewDates") : t("viewCalendar")}
           </button>
         </section>
+      )}
+
+      {!discreetMode && (
+        <React.Suspense
+          fallback={
+            <section className="dashboard-trends" aria-live="polite" aria-busy="true">
+              <h2>{language === "hi" ? "इतिहास और रुझान लोड हो रहे हैं…" : "Loading history and trends…"}</h2>
+            </section>
+          }
+        >
+          <DashboardTrends
+            periods={entries}
+            symptoms={getSymptomEntries()}
+            formatDate={formatDate}
+            daysBetween={daysBetween}
+            language={language}
+          />
+        </React.Suspense>
       )}
 
       <section className="personal-insight-card">
@@ -2996,7 +3029,7 @@ function SymptomsPage({ editRecord, onEditComplete }) {
                       : "No symptoms selected"}
                   </p>
                   <p className="history-meta">
-                    {record.flow && `Flow: ${record.flow} · `}Pain: {record.pain}/10 · Mood: {record.mood.replaceAll("-", " ")} · Energy: {record.energy}
+                    {record.flow && `Flow: ${record.flow} · `}Pain: {record.pain}/10 · Mood: {record.mood?.replaceAll("-", " ") || "not recorded"} · Energy: {record.energy || "not recorded"}
                   </p>
 
                   {record.note && (
@@ -3322,7 +3355,7 @@ function SettingsPage({
         ...getSymptomEntries().map((item) => [
           "check-in",
           item.date,
-          `symptoms=${item.symptoms.join("|")}; pain=${item.pain}/10; mood=${item.mood}; energy=${item.energy}; sleep=${item.sleepHours ?? ""}; medicines=${item.medicines}; note=${item.note}`,
+          `symptoms=${item.symptoms.join("|")}; pain=${item.pain}/10; mood=${item.mood || ""}; energy=${item.energy || ""}; sleep=${item.sleepHours ?? ""}; medicines=${item.medicines}; note=${item.note}`,
         ]),
       ];
       const csv = rows.map((row) =>
@@ -3981,10 +4014,10 @@ function getSymptomEntries() {
         bleedingBetweenPeriods: entry.bleedingBetweenPeriods === true,
         mood: ["very-low", "low", "okay", "good", "very-good"].includes(entry.mood)
           ? entry.mood
-          : "okay",
+          : undefined,
         energy: ["low", "usual", "high"].includes(entry.energy)
           ? entry.energy
-          : "usual",
+          : undefined,
         sleepHours:
           Number.isFinite(Number(entry.sleepHours)) &&
           Number(entry.sleepHours) >= 0 &&
