@@ -29,7 +29,9 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 - [ ] Visit summary: preview/print it and verify dates and optional record details; confirm it is labelled a personal record, not a diagnosis.
 - [ ] Offline answers: test known English and Hindi questions, suggested questions, an unknown question, and urgent self-harm terms. Confirm FAQ questions remain offline.
 - [ ] Floating AI assistant: open it on multiple dashboard pages and on a narrow viewport; verify the panel stays open during navigation, closes with Escape, requires consent before sending, retains the visible chat, and clears the conversation when consent is revoked. Verify urgent self-harm text receives local support guidance without being sent to the cloud.
-- [ ] Learn: open the PCOS and first-period lessons in both languages, verify citations, search/filter existing articles, and test read-aloud with and without browser speech support.
+- [ ] Learn: open the cycle basics, first-period, hygiene, common-symptoms, irregular-period, PCOS, endometriosis, and appointment-preparation lessons in English and Hindi. Verify translated headings/body/takeaways, source links, clinical-review notice, and English-only labels for untranslated supplementary articles.
+- [ ] Learn: verify the cycle diagram has an accessible name/description and remains legible on mobile; search by English/Hindi title, body terms, and source; filter each category; check the result count and empty state.
+- [ ] Learn read-aloud: test listen, pause, resume, stop, changing language/article while reading, and browser speech unavailable/error states. Confirm spoken language follows the selected content.
 
 ## Reminders and data controls
 

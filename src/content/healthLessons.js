@@ -19,6 +19,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "PCOS और PCOD: इन शब्दों को समझें",
+      description: "PCOS क्या है और स्वास्थ्यकर्मी लक्षणों का आकलन कैसे करते हैं।",
       intro: "PCOS एक स्वास्थ्य स्थिति है जिसमें हार्मोन स्तर और अंडाशय शामिल होते हैं। पीरियड में बदलाव के कई कारण हो सकते हैं; यह ऐप PCOS की जाँच नहीं कर सकता।",
       sections: [
         ["क्या बदलाव दिख सकते हैं", "कुछ लोगों को अनियमित पीरियड, मुहाँसे या चेहरे/शरीर पर अधिक बाल दिख सकते हैं। सभी लोगों के लक्षण एक जैसे नहीं होते।"],
@@ -48,6 +49,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "मेरा पहला पीरियड",
+      description: "तैयारी करने और मदद माँगने के लिए एक सहज जानकारी।",
       intro: "पीरियड अलग-अलग समय पर शुरू होते हैं। क्या उम्मीद करें और किससे पूछें, यह जानना तैयारी में मदद कर सकता है।",
       sections: [
         ["पीरियड क्या है", "पीरियड मासिक चक्र के हिस्से के रूप में होने वाला रक्तस्राव है। समय, प्रवाह और लक्षण लोगों में अलग हो सकते हैं।"],
@@ -77,6 +79,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "अधिक रक्तस्राव: किन बातों पर ध्यान दें",
+      description: "रक्तस्राव में कौन से बदलाव स्वास्थ्यकर्मी से चर्चा योग्य हो सकते हैं।",
       intro: "रक्तस्राव अलग-अलग हो सकता है। इसका रोज़मर्रा के जीवन पर असर भी महत्वपूर्ण है। बदलाव का कारण केवल स्वास्थ्यकर्मी जाँच सकते हैं।",
       sections: [
         ["उपयोगी रिकॉर्ड रखें", "रक्तस्राव कितने दिन रहता है, पीरियड उत्पाद कितनी बार बदलने पड़ते हैं, कपड़ों या बिस्तर पर दाग लगते हैं या नहीं, और इसका रोज़मर्रा के कामों पर क्या असर है—यह लिखें। खून की मात्रा नापने की ज़रूरत नहीं है।"],
@@ -106,6 +109,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "अनियमित पीरियड: समय को समझना",
+      description: "चक्र के समय में बदलाव और सलाह कब लेनी चाहिए, यह समझें।",
       intro: "एक चक्र की गिनती एक पीरियड के पहले दिन से अगले पीरियड से पहले के दिन तक होती है। शुरुआत के वर्षों में और मेनोपॉज़ के आसपास समय बदल सकता है।",
       sections: [
         ["अनुमान नहीं, तारीखें लिखें", "हर पीरियड का पहला दिन लिखने से शुरुआतों के बीच का अंतर समझने में मदद मिलती है। छूटी या गलत तारीखें ऐप के सारांश को कम उपयोगी बना सकती हैं।"],
@@ -135,6 +139,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "पीरियड का दर्द: आराम और मदद कब लें",
+      description: "आराम के सरल तरीके और दर्द की जाँच कब करानी चाहिए।",
       intro: "पीरियड का दर्द हर व्यक्ति में अलग हो सकता है। यदि दर्द तेज हो, बदल रहा हो या रोज़मर्रा के कामों में बाधा डाल रहा हो, तो मदद मिलनी चाहिए।",
       sections: [
         ["आराम के सरल तरीके", "कुछ लोगों को गर्म पानी से नहाना, कपड़े में लपेटा हुआ हीट पैड, हल्की गतिविधि या मालिश से आराम मिल सकता है। दर्द की दवा लेने से पहले फार्मासिस्ट या स्वास्थ्यकर्मी से पूछें—खासकर यदि कोई स्वास्थ्य समस्या हो या दूसरी दवाएँ लेते हों।"],
@@ -164,6 +169,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "पीरियड न आना या देर से आना",
+      description: "देर से पीरियड के कई कारण हो सकते हैं; क्या लिखें और सलाह कब लें।",
       intro: "पीरियड जल्दी या देर से आ सकता है, और पीरियड छूटने के कई संभावित कारण हो सकते हैं। ऐप कारण नहीं बता सकता।",
       sections: [
         ["संभावित कारण अलग-अलग हो सकते हैं", "गर्भावस्था, तनाव, वजन या व्यायाम में बदलाव, स्तनपान, हार्मोनल गर्भनिरोधक और कुछ स्वास्थ्य स्थितियाँ समय को प्रभावित कर सकती हैं। यह सूची स्वयं निदान करने के लिए नहीं है।"],
@@ -193,6 +199,7 @@ export const healthLessons = [
     },
     hindi: {
       title: "एंडोमेट्रियोसिस: लक्षणों पर ध्यान देना ज़रूरी है",
+      description: "एंडोमेट्रियोसिस से जुड़े लक्षण और चिंता पर बात करने का तरीका।",
       intro: "एंडोमेट्रियोसिस में गर्भाशय की अंदरूनी परत जैसी ऊतक गर्भाशय के बाहर बढ़ती है। लक्षण अलग-अलग हो सकते हैं और दूसरी स्थितियों में भी ऐसे लक्षण हो सकते हैं।",
       sections: [
         ["लक्षण अलग-अलग हो सकते हैं", "कुछ लोगों को पीरियड में तेज दर्द, अधिक रक्तस्राव, पेल्विक या कमर के निचले हिस्से में दर्द, शौच या पेशाब के समय या यौन संबंध के दौरान दर्द, अथवा थकान हो सकती है। सभी के लक्षण एक जैसे नहीं होते।"],
@@ -200,6 +207,156 @@ export const healthLessons = [
         ["स्वास्थ्यकर्मी से कब बात करें", "दर्द या अन्य लक्षण रोज़मर्रा के जीवन, रिश्तों, पढ़ाई या काम को प्रभावित करें, या बने रहें/बढ़ें, तो स्वास्थ्यकर्मी से बात करें। अचानक तेज दर्द हो तो तुरंत मदद लें।"],
       ],
       takeaway: "मदद माँगने से पहले लक्षणों के असहनीय होने का इंतज़ार ज़रूरी नहीं।",
+    },
+  },
+  {
+    title: "The menstrual cycle: a simple guide",
+    category: "Basics",
+    minutes: "4 min read",
+    keywords: "cycle menstruation period phases ovary uterus hormones",
+    description: "A visual introduction to cycle phases and what an app can—and cannot—tell you.",
+    illustration: "cycle",
+    intro: "The menstrual cycle is counted from the first day of one period to the first day of the next. The length and symptoms can vary, and a cycle is not always a fixed number of days.",
+    sections: [
+      ["Menstruation", "The uterus sheds its lining and bleeding leaves the body through the vagina. This is the start of a new cycle."],
+      ["After a period", "Hormone changes help the uterine lining build again. An ovary may release an egg around the middle of a cycle, but timing differs and an app cannot confirm ovulation."],
+      ["If pregnancy does not occur", "Hormone levels change and the uterine lining sheds as the next period. Not every cycle follows the same pattern."],
+    ],
+    takeaway: "This diagram is a simplified overview, not a prediction or a way to identify fertile days. Seek individual advice for personal concerns.",
+    source: {
+      organisation: "NHS",
+      title: "Periods",
+      url: "https://www.nhs.uk/conditions/periods/",
+    },
+    hindi: {
+      title: "मासिक चक्र: एक सरल जानकारी",
+      description: "चक्र के चरणों का चित्र सहित परिचय और ऐप क्या बता सकता है—क्या नहीं।",
+      intro: "मासिक चक्र की गिनती एक पीरियड के पहले दिन से अगले पीरियड के पहले दिन तक होती है। इसकी अवधि और लक्षण बदल सकते हैं; हर चक्र तय दिनों का नहीं होता।",
+      sections: [
+        ["मासिक रक्तस्राव", "गर्भाशय की परत झड़ती है और रक्त योनि से शरीर के बाहर आता है। यह नए चक्र की शुरुआत है।"],
+        ["पीरियड के बाद", "हार्मोन में बदलाव से गर्भाशय की परत फिर बनने लगती है। चक्र के बीच के आसपास अंडाशय से अंडा निकल सकता है, लेकिन समय अलग-अलग होता है और ऐप ओव्यूलेशन की पुष्टि नहीं कर सकता।"],
+        ["यदि गर्भावस्था न हो", "हार्मोन स्तर बदलते हैं और गर्भाशय की परत अगले पीरियड के रूप में झड़ती है। हर चक्र का पैटर्न एक जैसा नहीं होता।"],
+      ],
+      takeaway: "यह चित्र सरल जानकारी है—यह उपजाऊ दिनों की भविष्यवाणी या पहचान नहीं करता। निजी चिंता के लिए स्वास्थ्यकर्मी से सलाह लें।",
+    },
+  },
+  {
+    title: "Period hygiene and choosing products",
+    category: "Hygiene",
+    minutes: "3 min read",
+    keywords: "hygiene pads tampons cups underwear washing cleaning vulva",
+    description: "Practical, shame-free guidance for period products and everyday care.",
+    sections: [
+      ["Choose a product that works for you", "Pads, tampons, menstrual cups and period underwear are options. Comfort, access, culture and personal preference matter. Follow the product's instructions for changing, cleaning and use."],
+      ["Everyday care", "Wash your hands before and after changing products when possible. Gently wash the outside genital area with clean water; avoid putting products or washes inside the vagina. Use clean, dry products and facilities when available."],
+      ["Ask for support", "If you cannot access products, clean water or privacy, consider speaking with a trusted person or local health or community service. Menstruation is not dirty or shameful."],
+    ],
+    takeaway: "Use products according to their instructions and choose care that feels safe and comfortable for you.",
+    source: {
+      organisation: "WHO",
+      title: "Menstrual health",
+      url: "https://www.who.int/news-room/fact-sheets/detail/menstrual-health",
+    },
+    hindi: {
+      title: "पीरियड की स्वच्छता और उत्पाद चुनना",
+      description: "पीरियड उत्पादों और रोज़मर्रा की देखभाल के लिए सरल, बिना शर्म वाली जानकारी।",
+      intro: "पीरियड के दौरान स्वच्छता में सुरक्षित उत्पाद, साफ पानी, निजता और आराम शामिल हैं।",
+      sections: [
+        ["अपने लिए सही उत्पाद चुनें", "पैड, टैम्पॉन, मेंस्ट्रुअल कप और पीरियड अंडरवियर विकल्प हैं। आराम, उपलब्धता, संस्कृति और निजी पसंद मायने रखते हैं। बदलने, साफ़ करने और उपयोग के लिए उत्पाद के निर्देश मानें।"],
+        ["रोज़मर्रा की देखभाल", "संभव हो तो उत्पाद बदलने से पहले और बाद में हाथ धोएँ। बाहरी जननांग क्षेत्र को साफ पानी से धीरे धोएँ; योनि के अंदर कोई उत्पाद या वॉश न डालें। जहाँ संभव हो साफ और सूखे उत्पाद व सुविधा का उपयोग करें।"],
+        ["सहायता माँगें", "यदि उत्पाद, साफ पानी या निजता उपलब्ध न हो, तो भरोसेमंद व्यक्ति या स्थानीय स्वास्थ्य/सामुदायिक सेवा से बात करें। पीरियड गंदा या शर्म की बात नहीं है।"],
+      ],
+      takeaway: "उत्पाद के निर्देशों के अनुसार उपयोग करें और ऐसी देखभाल चुनें जो आपके लिए सुरक्षित व आरामदायक हो।",
+    },
+  },
+  {
+    title: "Cramps, fatigue, headaches and mood changes",
+    category: "Symptoms",
+    minutes: "4 min read",
+    keywords: "cramps pain fatigue tiredness headache mood changes PMS symptoms",
+    description: "Learn about common symptoms, tracking their impact, and when to seek advice.",
+    intro: "Some people notice cramps, tiredness, headaches or mood changes before or during a period. Symptoms and their impact differ, and they can have causes unrelated to the menstrual cycle.",
+    sections: [
+      ["Notice the pattern", "If useful, record when a symptom starts, how long it lasts, how it affects daily life, and whether it happens around the same time in different cycles. A pattern is information, not a diagnosis."],
+      ["Gentle comfort", "Rest, fluids, a wrapped heat source or gentle movement may feel helpful to some people. Ask a pharmacist or healthcare professional whether a medicine is suitable for you; this app cannot recommend an individual treatment."],
+      ["When to ask for help", "Speak with a healthcare professional if symptoms are severe, new, worsening, persist, or interfere with school, work, sleep or daily activities. Sudden severe pain needs urgent medical assessment."],
+    ],
+    takeaway: "You deserve support for symptoms that worry you or affect daily life. Tracking cannot identify their cause.",
+    source: {
+      organisation: "NHS",
+      title: "PMS (premenstrual syndrome)",
+      url: "https://www.nhs.uk/conditions/pre-menstrual-syndrome/",
+    },
+    hindi: {
+      title: "ऐंठन, थकान, सिरदर्द और मनोदशा में बदलाव",
+      description: "आम लक्षणों, उनके असर को दर्ज करने और सलाह कब लेने की जानकारी।",
+      intro: "कुछ लोगों को पीरियड से पहले या दौरान ऐंठन, थकान, सिरदर्द या मनोदशा में बदलाव महसूस हो सकता है। लक्षण और उनका असर अलग-अलग होते हैं; इनके कारण चक्र से जुड़े न भी हों।",
+      sections: [
+        ["पैटर्न पर ध्यान दें", "यदि उपयोगी लगे, तो लिखें कि लक्षण कब शुरू होता है, कितनी देर रहता है, रोज़मर्रा पर क्या असर है और क्या यह अलग-अलग चक्रों में लगभग एक ही समय पर होता है। पैटर्न जानकारी है, निदान नहीं।"],
+        ["आराम के सरल तरीके", "आराम, पानी पीना, कपड़े में लपेटा हुआ गर्म सेक या हल्की गतिविधि कुछ लोगों को मददगार लग सकती है। दवा आपके लिए सही है या नहीं, यह फार्मासिस्ट या स्वास्थ्यकर्मी से पूछें; ऐप व्यक्तिगत उपचार नहीं बता सकता।"],
+        ["सलाह कब लें", "लक्षण तेज, नए, बढ़ते हुए, लंबे समय तक रहने वाले हों या पढ़ाई, काम, नींद अथवा रोज़मर्रा में बाधा डालें तो स्वास्थ्यकर्मी से बात करें। अचानक बहुत तेज दर्द में तुरंत चिकित्सा जाँच लें।"],
+      ],
+      takeaway: "चिंता या रोज़मर्रा के जीवन पर असर डालने वाले लक्षणों के लिए सहायता लें। रिकॉर्ड उनका कारण नहीं बता सकता।",
+    },
+  },
+  {
+    title: "Common menstrual variations",
+    category: "Basics",
+    minutes: "3 min read",
+    keywords: "variation normal cycle flow duration irregular periods puberty menopause",
+    description: "Understand why timing, bleeding and symptoms may differ across people and over time.",
+    intro: "Menstrual cycles are not identical for everyone or every month. Age, puberty, approaching menopause, pregnancy, stress, health conditions and some medicines can be associated with changes.",
+    sections: [
+      ["What can vary", "The gap between periods, how many days bleeding lasts, the amount of bleeding, and symptoms can differ. A change does not by itself explain its cause."],
+      ["Notice your own pattern", "You may record period start dates, bleeding duration, symptoms and how they affect daily life. Consider a conversation with a healthcare professional if a change is worrying, persistent or disruptive."],
+      ["Get individual advice", "Seek advice for bleeding between periods or after sex, very heavy or prolonged bleeding, periods that stop unexpectedly, or pain that affects your life. Advice can depend on your age and health history."],
+    ],
+    takeaway: "There is no single pattern that describes everyone. Personal concerns are best discussed with a qualified healthcare professional.",
+    source: {
+      organisation: "NHS",
+      title: "Periods",
+      url: "https://www.nhs.uk/conditions/periods/",
+    },
+    hindi: {
+      title: "मासिक चक्र में आम बदलाव",
+      description: "समझें कि समय, रक्तस्राव और लक्षण लोगों में तथा समय के साथ क्यों बदल सकते हैं।",
+      intro: "हर व्यक्ति या हर महीने मासिक चक्र एक जैसा नहीं होता। उम्र, किशोरावस्था, मेनोपॉज़ का समय, गर्भावस्था, तनाव, स्वास्थ्य स्थितियाँ और कुछ दवाएँ बदलाव से जुड़ी हो सकती हैं।",
+      sections: [
+        ["क्या बदल सकता है", "पीरियड के बीच का अंतर, रक्तस्राव कितने दिन रहता है, उसकी मात्रा और लक्षण अलग-अलग हो सकते हैं। केवल बदलाव से उसका कारण पता नहीं चलता।"],
+        ["अपने पैटर्न पर ध्यान दें", "पीरियड शुरू होने की तारीख, रक्तस्राव की अवधि, लक्षण और रोज़मर्रा पर असर लिख सकते हैं। बदलाव चिंता का कारण हो, जारी रहे या कामों में बाधा डाले तो स्वास्थ्यकर्मी से बात करें।"],
+        ["व्यक्तिगत सलाह लें", "पीरियड के बीच या यौन संबंध के बाद रक्तस्राव, बहुत अधिक/लंबा रक्तस्राव, अचानक पीरियड रुकना या जीवन में बाधा डालने वाला दर्द हो तो सलाह लें। सलाह उम्र और स्वास्थ्य इतिहास के अनुसार अलग हो सकती है।"],
+      ],
+      takeaway: "सबके लिए एक ही सामान्य पैटर्न नहीं होता। निजी चिंता पर योग्य स्वास्थ्यकर्मी से बात करें।",
+    },
+  },
+  {
+    title: "Preparing for a healthcare appointment",
+    category: "Medical Guidance",
+    minutes: "3 min read",
+    keywords: "appointment doctor prepare questions symptoms notes visit healthcare",
+    description: "A simple checklist to help you share concerns and ask questions at a visit.",
+    intro: "You can ask for help even if you are unsure what is causing a symptom. A short record may make it easier to explain what has changed.",
+    sections: [
+      ["What you might bring", "Note period dates, bleeding changes, pain or other symptoms, when they happen, how they affect daily life, medicines or supplements you use, and any questions you have. Bring only what you feel comfortable sharing."],
+      ["Questions you can ask", "You might ask what could explain the symptoms, whether any checks are recommended, what options are available, what to expect next, and when to seek urgent help."],
+      ["Your choices and privacy", "You can ask the clinician to explain unfamiliar words, discuss privacy, or pause to ask questions. If possible and helpful, you may bring a trusted support person. A personal record is not a diagnosis."],
+    ],
+    takeaway: "There is no need to have all the answers before an appointment. Share what concerns you and ask for explanations.",
+    source: {
+      organisation: "NHS",
+      title: "Period problems",
+      url: "https://www.nhs.uk/conditions/periods/period-problems/",
+    },
+    hindi: {
+      title: "स्वास्थ्यकर्मी से मुलाक़ात की तैयारी",
+      description: "अपनी चिंता बताने और सवाल पूछने के लिए एक सरल सूची।",
+      intro: "लक्षण का कारण पता न हो तब भी आप सहायता माँग सकते हैं। छोटा रिकॉर्ड यह बताने में मदद कर सकता है कि क्या बदला है।",
+      sections: [
+        ["क्या साथ ले जा सकते हैं", "पीरियड की तारीखें, रक्तस्राव में बदलाव, दर्द या अन्य लक्षण, वे कब होते हैं, रोज़मर्रा पर उनका असर, उपयोग की दवाएँ/सप्लीमेंट और अपने सवाल लिख लें। केवल वही जानकारी साझा करें जिसे बताने में आप सहज हों।"],
+        ["क्या सवाल पूछ सकते हैं", "पूछें कि लक्षणों के संभावित कारण क्या हैं, कोई जाँच सुझाई जाती है या नहीं, कौन से विकल्प हैं, आगे क्या होगा और तुरंत मदद कब लेनी चाहिए।"],
+        ["आपकी पसंद और निजता", "अनजान शब्दों का अर्थ समझाने, निजता पर बात करने या सवाल पूछने के लिए रुकने को कह सकते हैं। संभव और उपयोगी हो तो भरोसेमंद व्यक्ति साथ ला सकते हैं। निजी रिकॉर्ड निदान नहीं है।"],
+      ],
+      takeaway: "मुलाक़ात से पहले सभी जवाब जानना ज़रूरी नहीं। अपनी चिंता बताएँ और स्पष्टीकरण माँगें।",
     },
   },
 ];

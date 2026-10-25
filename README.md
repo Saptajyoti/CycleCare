@@ -14,7 +14,8 @@ profile; the app does not send them to a CycleCare server.
 - Symptom and mood check-ins, recent record summaries, cycle insights, and
   cautious, record-based care guidance.
 - Offline keyword matching for a finite FAQ, sourced health lessons and
-  articles, English/Hindi content in selected areas, and optional read-aloud.
+  articles, bilingual search, essential English/Hindi learning content, and
+  optional pause/resume read-aloud.
 - An opt-in Gemini educational assistant, with the existing offline FAQ kept as
   a fallback. Saved CycleCare data is never sent to Gemini.
 - Opt-in reminders while the Reminders page is open and optional pregnancy
@@ -123,9 +124,13 @@ confirm ovulation, diagnose a condition, or guide contraception decisions.
 
 - Reminders are checked while the Reminders page is open; background delivery
   after the app closes is not supported.
-- Hindi translation is partial. Ask is an offline FAQ matcher, not an AI
-  assistant or a general medical question service.
-- Health guidance and translations need ongoing clinical and local review.
+- Some supplementary Learn articles and other app areas are English-only;
+  additional Indian-language translations should be prioritized based on
+  community needs.
+- Health lessons are general education, not diagnosis or individualized
+  treatment advice. The content and translations have not yet been reviewed by
+  a qualified healthcare professional and need ongoing clinical and local
+  review.
 - Browser storage, device accessibility, and notification support vary.
 - Continue manual keyboard, screen-reader, mobile, and health-content testing
   using [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md).

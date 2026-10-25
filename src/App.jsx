@@ -497,7 +497,7 @@ function App() {
             onEditComplete={() => setSymptomEditRecord(null)}
           />
         ) : activePage === "Learn" ? (
-          <LearnPage language={language} />
+          <LearnPage key={language} language={language} />
         ) : activePage === "When to see a doctor" ? (
           <CareGuidancePage />
         ) : activePage === "Insights" ? (
@@ -3082,42 +3082,124 @@ function LearnPage({ language }) {
   const [category, setCategory] = useState("All");
   const [openedArticle, setOpenedArticle] = useState(null);
   const [isReading, setIsReading] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speechError, setSpeechError] = useState("");
   const categories = ["All", "Basics", "Symptoms", "Hygiene", "Wellbeing", "Medical Guidance"];
-  const query = searchTerm.trim().toLowerCase();
+  const query = searchTerm.trim().toLocaleLowerCase();
   const filteredArticles = [...learningArticles, ...healthLessons].filter((article) =>
     (category === "All" || article.category === category) &&
-    (!query || [article.title, article.description, article.keywords].join(" ").toLowerCase().includes(query))
+    (!query || query.split(/\s+/).every((term) => {
+      const searchable = [
+        article.title,
+        article.description,
+        article.keywords,
+        article.intro,
+        article.takeaway,
+        article.sections.flat().join(" "),
+        article.source.title,
+        article.hindi?.title,
+        article.hindi?.description,
+        article.hindi?.intro,
+        article.hindi?.takeaway,
+        article.hindi?.sections.flat().join(" "),
+      ].filter(Boolean).join(" ").toLocaleLowerCase();
+      return searchable.includes(term);
+    }))
   );
+
+  useEffect(() => () => {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, [openedArticle, language]);
 
   if (openedArticle) {
     const article = language === "hi" && openedArticle.hindi
       ? { ...openedArticle, ...openedArticle.hindi }
       : openedArticle;
+    const speechSupported = "speechSynthesis" in window;
+    const toggleReading = () => {
+      if (!speechSupported) return;
+      if (isReading && !isPaused) {
+        window.speechSynthesis.pause();
+        setIsPaused(true);
+        return;
+      }
+      if (isPaused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+        return;
+      }
+      const speechText = [
+        article.title,
+        article.intro,
+        ...article.sections.flatMap(([heading, body]) => [heading, body]),
+        article.takeaway,
+      ].join(". ");
+      const speech = new SpeechSynthesisUtterance(speechText);
+      speech.lang = language === "hi" ? "hi-IN" : "en-IN";
+      applyPreferredSpeechVoice(speech);
+      speech.onend = () => {
+        setIsReading(false);
+        setIsPaused(false);
+      };
+      speech.onerror = (event) => {
+        if (event.error === "canceled" || event.error === "interrupted") return;
+        setIsReading(false);
+        setIsPaused(false);
+        setSpeechError(language === "hi"
+          ? "पढ़कर सुनाना शुरू नहीं हो पाया। कृपया अपने ब्राउज़र की आवाज़ सेटिंग जाँचें।"
+          : "Read-aloud could not start. Check your browser's speech settings and try again.");
+      };
+      setSpeechError("");
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(speech);
+      setIsReading(true);
+    };
+    const stopReading = () => {
+      if (speechSupported) window.speechSynthesis.cancel();
+      setIsReading(false);
+      setIsPaused(false);
+    };
     return (
       <section className="page-card article-reader">
-        <button className="back-button" onClick={() => setOpenedArticle(null)}>
-          <ArrowLeft size={17} /> Back to articles
+        <button className="back-button" type="button" onClick={() => {
+          setIsReading(false);
+          setIsPaused(false);
+          setSpeechError("");
+          setOpenedArticle(null);
+        }}>
+          <ArrowLeft size={17} /> {language === "hi" ? "लेखों पर वापस जाएँ" : "Back to articles"}
         </button>
-        <span className="article-category">{article.category}</span>
+        <span className="article-category">{language === "hi" ? ({
+          Basics: "बुनियादी जानकारी",
+          Symptoms: "लक्षण",
+          Hygiene: "स्वच्छता",
+          Wellbeing: "सेहत",
+          "Medical Guidance": "चिकित्सा सलाह",
+        })[article.category] : article.category}</span>
         <h2>{article.title}</h2>
+        {language === "hi" && !openedArticle.hindi && <p className="article-language-note" role="note">यह लेख अभी केवल अंग्रेज़ी में उपलब्ध है।</p>}
         <p className="article-intro">{article.intro}</p>
+        {article.illustration === "cycle" && <CycleDiagram language={language} />}
         {article.sections.map(([heading, body]) => <section className="article-section" key={heading}><h3>{heading}</h3><p>{body}</p></section>)}
         <div className="article-takeaway"><h3>{language === "hi" ? "मुख्य बात" : "Key takeaway"}</h3><p>{article.takeaway}</p></div>
-        <button className="secondary-button read-aloud-button" onClick={() => {
-          if (!("speechSynthesis" in window)) return;
-          if (isReading) {
-            window.speechSynthesis.cancel();
-            setIsReading(false);
-          } else {
-            const speech = new SpeechSynthesisUtterance(`${article.title}. ${article.intro}. ${article.sections.map(([heading, body]) => `${heading}. ${body}`).join(". ")}. ${article.takeaway}`);
-            speech.lang = language === "hi" ? "hi-IN" : "en-IN";
-            applyPreferredSpeechVoice(speech);
-            speech.onend = () => setIsReading(false);
-            window.speechSynthesis.speak(speech);
-            setIsReading(true);
-          }
-        }}><Volume2 size={16} /> {isReading ? "Stop reading" : "Listen"}</button>
-        <p className="article-disclaimer">This information is educational and is not individualized medical advice.</p>
+        <div className="read-aloud-controls">
+          <button className="secondary-button read-aloud-button" type="button" onClick={toggleReading} disabled={!speechSupported}>
+            <Volume2 size={16} /> {!speechSupported
+              ? (language === "hi" ? "पढ़कर सुनाना उपलब्ध नहीं" : "Read-aloud unavailable")
+              : isPaused
+                ? (language === "hi" ? "फिर से शुरू करें" : "Resume")
+                : isReading
+                  ? (language === "hi" ? "रोकें" : "Pause")
+                  : (language === "hi" ? "सुनें" : "Listen")}
+          </button>
+          {isReading && <button className="secondary-button read-aloud-button" type="button" onClick={stopReading}>
+            {language === "hi" ? "बंद करें" : "Stop"}
+          </button>}
+        </div>
+        {speechError && <p className="article-disclaimer" role="status">{speechError}</p>}
+        <p className="article-disclaimer">{language === "hi"
+          ? "यह सामान्य शैक्षिक जानकारी है, निदान या व्यक्तिगत उपचार सलाह नहीं। सामग्री की योग्य स्वास्थ्यकर्मी द्वारा समीक्षा अभी बाकी है।"
+          : "This is general educational information, not a diagnosis or individualized treatment advice. Review by a qualified healthcare professional is still pending."}</p>
         <a className="article-source" href={article.source.url} target="_blank" rel="noreferrer"><ExternalLink size={16} /><span><strong>{article.source.organisation}</strong><br />{article.source.title}</span></a>
       </section>
     );
@@ -3125,16 +3207,62 @@ function LearnPage({ language }) {
 
   return (
     <section className="page-card learn-hub">
-      <span className="eyebrow">KNOWLEDGE IS CARE</span>
-      <h2>Learn about your health</h2>
-      <p className="page-description">Clear, evidence-informed reading for understanding menstrual health. It is not a substitute for personal medical advice.</p>
-      <label className="article-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Search articles</span><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search articles" /></label>
-      <div className="category-filters" aria-label="Article categories">{categories.map((item) => <button key={item} className={category === item ? "selected" : ""} onClick={() => setCategory(item)} aria-pressed={category === item}>{item}</button>)}</div>
-      {filteredArticles.length === 0 ? <div className="article-empty"><h3>No articles found</h3><p>Try a different search term or choose another category.</p></div> : <div className="article-grid">{filteredArticles.map((rawArticle) => {
+      <span className="eyebrow">{language === "hi" ? "जानकारी भी देखभाल है" : "KNOWLEDGE IS CARE"}</span>
+      <h2>{language === "hi" ? "अपने स्वास्थ्य के बारे में जानें" : "Learn about your health"}</h2>
+      <p className="page-description">{language === "hi"
+        ? "मासिक स्वास्थ्य की स्पष्ट, स्रोत-आधारित जानकारी। यह व्यक्तिगत चिकित्सा सलाह का विकल्प नहीं है। सामग्री की योग्य स्वास्थ्यकर्मी द्वारा समीक्षा अभी बाकी है।"
+        : "Clear, source-linked reading about menstrual health. It is not a substitute for personal medical advice. Review by a qualified healthcare professional is still pending."}</p>
+      {language === "hi" && <p className="article-language-note" role="note">मुख्य विषय हिंदी में उपलब्ध हैं; कुछ अतिरिक्त लेख अभी केवल अंग्रेज़ी में हैं।</p>}
+      <label className="article-search"><Search size={18} aria-hidden="true" /><span className="sr-only">{language === "hi" ? "लेख खोजें" : "Search articles"}</span><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={language === "hi" ? "अंग्रेज़ी या हिंदी में खोजें" : "Search in English or Hindi"} /></label>
+      <div className="category-filters" aria-label={language === "hi" ? "लेख श्रेणियाँ" : "Article categories"}>{categories.map((item) => <button key={item} className={category === item ? "selected" : ""} onClick={() => setCategory(item)} aria-pressed={category === item}>{language === "hi" ? ({
+        All: "सभी",
+        Basics: "बुनियादी जानकारी",
+        Symptoms: "लक्षण",
+        Hygiene: "स्वच्छता",
+        Wellbeing: "सेहत",
+        "Medical Guidance": "चिकित्सा सलाह",
+      })[item] : item}</button>)}</div>
+      <p className="article-result-count" role="status">{language === "hi" ? `${filteredArticles.length} लेख` : `${filteredArticles.length} ${filteredArticles.length === 1 ? "article" : "articles"}`}</p>
+      {filteredArticles.length === 0 ? <div className="article-empty"><h3>{language === "hi" ? "कोई लेख नहीं मिला" : "No articles found"}</h3><p>{language === "hi" ? "दूसरा शब्द खोजें या कोई अन्य श्रेणी चुनें।" : "Try a different search term or choose another category."}</p></div> : <div className="article-grid">{filteredArticles.map((rawArticle) => {
         const article = language === "hi" && rawArticle.hindi ? { ...rawArticle, ...rawArticle.hindi } : rawArticle;
-        return <article className="article-card" key={rawArticle.title}><span className="article-category">{article.category}</span><h3>{article.title}</h3><p>{article.description}</p><div><span className="reading-time"><Clock size={14} />{article.minutes}</span><button onClick={() => setOpenedArticle(rawArticle)} aria-label={`Read ${article.title}`}>Read article <ChevronRight size={16} /></button></div></article>;
+        return <article className="article-card" key={rawArticle.title}><span className="article-category">{language === "hi" ? ({
+          Basics: "बुनियादी जानकारी",
+          Symptoms: "लक्षण",
+          Hygiene: "स्वच्छता",
+          Wellbeing: "सेहत",
+          "Medical Guidance": "चिकित्सा सलाह",
+        })[article.category] : article.category}</span><h3>{article.title}</h3><p>{article.description}</p>{language === "hi" && !rawArticle.hindi && <small className="article-card-language-note">केवल अंग्रेज़ी</small>}<div><span className="reading-time"><Clock size={14} />{article.minutes}</span><button type="button" onClick={() => {
+          setIsReading(false);
+          setIsPaused(false);
+          setSpeechError("");
+          setOpenedArticle(rawArticle);
+        }} aria-label={`${language === "hi" ? "पढ़ें" : "Read"} ${article.title}`}>{language === "hi" ? "लेख पढ़ें" : "Read article"} <ChevronRight size={16} /></button></div></article>;
       })}</div>}
     </section>
+  );
+}
+
+function CycleDiagram({ language }) {
+  const hindi = language === "hi";
+  return (
+    <figure className="cycle-diagram">
+      <svg viewBox="0 0 560 180" role="img" aria-labelledby="cycle-diagram-title cycle-diagram-description">
+        <title id="cycle-diagram-title">{hindi ? "मासिक चक्र के चरण" : "Stages of the menstrual cycle"}</title>
+        <desc id="cycle-diagram-description">{hindi
+          ? "मासिक रक्तस्राव, गर्भाशय की परत का बनना, अंडा निकलना और अगले पीरियड की तैयारी का सरल चक्र। समय हर व्यक्ति में अलग हो सकता है।"
+          : "A simplified cycle of menstruation, rebuilding of the uterine lining, possible egg release and preparation for the next period. Timing varies."}</desc>
+        <path className="cycle-diagram-path" d="M 82 84 C 125 20, 224 20, 266 84 S 408 148, 478 84" fill="none" strokeWidth="5" strokeLinecap="round" />
+        <path className="cycle-diagram-path cycle-diagram-path-return" d="M 478 96 C 420 158, 140 158, 82 96" fill="none" strokeWidth="3" strokeDasharray="7 8" strokeLinecap="round" />
+        {[82, 214, 346, 478].map((x, index) => <circle key={x} cx={x} cy={index === 0 || index === 3 ? 90 : index === 1 ? 50 : 130} r="14" className={`cycle-diagram-node cycle-diagram-node-${index + 1}`} />)}
+        <text x="82" y="126" textAnchor="middle">{hindi ? "पीरियड" : "Period"}</text>
+        <text x="214" y="26" textAnchor="middle">{hindi ? "परत बनना" : "Lining builds"}</text>
+        <text x="346" y="164" textAnchor="middle">{hindi ? "अंडा निकल सकता है" : "Possible egg release"}</text>
+        <text x="478" y="126" textAnchor="middle">{hindi ? "अगला चक्र" : "Next cycle"}</text>
+      </svg>
+      <figcaption>{hindi
+        ? "सरल चित्र—चरणों का समय अलग हो सकता है; यह उपजाऊ दिनों की भविष्यवाणी नहीं है।"
+        : "Simplified diagram—stage timing can vary; this is not a prediction of fertile days."}</figcaption>
+    </figure>
   );
 }
 
@@ -3434,7 +3562,7 @@ function SettingsPage({
           <option value="en">English</option>
           <option value="hi">हिंदी</option>
         </AnimatedSelect>
-        <p className="privacy-hint">Hindi is available for onboarding, selected guidance and FAQ content. Some screens are not yet translated.</p>
+        <p className="privacy-hint">Hindi is available for essential Learn lessons, onboarding, selected guidance and FAQ content. Some screens and supplementary Learn articles remain English-only.</p>
 
         <label className="field-label" htmlFor="speech-voice">Reading voice</label>
         <select
