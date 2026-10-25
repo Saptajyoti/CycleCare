@@ -3566,6 +3566,226 @@ body {
   .refreshment-card h3 { font-size: 16px; }
 }
 
+.self-care-daily {
+  display: grid;
+  gap: 9px;
+  margin: 19px 0 16px;
+  padding: 15px 17px;
+  border: 1px solid #e7d4cc;
+  border-radius: 14px;
+  background: rgba(255, 253, 249, .88);
+}
+.self-care-daily h3, .self-care-reminder h3 {
+  margin: 0;
+  color: #34201d;
+  font: 500 17px Georgia, "Times New Roman", serif;
+}
+.self-care-daily p, .self-care-reminder p {
+  margin: 4px 0 0;
+  color: #66534d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.self-care-daily .privacy-hint { margin: 0; }
+.self-care-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eadbd3;
+}
+.self-care-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #819477;
+  transition: width 180ms ease;
+}
+.self-care-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.self-care-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.self-care-category-button, .self-care-favorites-toggle, .self-care-icon-button,
+.self-care-check-button, .self-care-feedback button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #e1c9c0;
+  border-radius: 10px;
+  background: #fffdf9;
+  color: #493b36;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.self-care-category-button.is-active, .self-care-favorites-toggle.is-active {
+  border-color: #76866e;
+  background: #e8eee4;
+  color: #34452f;
+}
+.self-care-icon-button.is-saved { border-color: #c8954d; color: #684719; }
+.self-care-icon-button.is-saved svg { fill: #f1d89b; }
+.self-care-check-button.is-complete {
+  border-color: #76866e;
+  background: #e8eee4;
+  color: #34452f;
+}
+.self-care-category-button:hover, .self-care-favorites-toggle:hover,
+.self-care-icon-button:hover, .self-care-check-button:hover,
+.self-care-feedback button:hover { background-color: #f4eee8; }
+.self-care-category-button:focus-visible, .self-care-favorites-toggle:focus-visible,
+.self-care-icon-button:focus-visible, .self-care-check-button:focus-visible,
+.self-care-feedback button:focus-visible, .self-care-reminder input:focus-visible {
+  outline: 3px solid #5579a8;
+  outline-offset: 2px;
+}
+.self-care-category-description {
+  margin: 13px 0;
+  color: #66534d;
+  font-size: 13px;
+}
+.self-care-nutrition-note {
+  margin: 0 0 13px;
+  padding: 11px 13px;
+  border-left: 3px solid #849477;
+  border-radius: 0 9px 9px 0;
+  background: #f2f4ee;
+  color: #493b36;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.self-care-storage-error {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff0ee;
+  color: #8b3027;
+  font-size: 12px;
+}
+.self-care-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.self-care-suggestion-card { display: flex; flex-direction: column; }
+.self-care-suggestion-card .refreshment-illustration { min-height: 92px; }
+.self-care-suggestion-card .refreshment-art { height: 82px; }
+.self-care-suggestion-card .refreshment-copy { display: flex; flex: 1; flex-direction: column; }
+.self-care-card-category {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+  color: #59684f;
+  font-size: 11px;
+  font-weight: 600;
+}
+.self-care-suggestion-card h4 {
+  margin: 0 0 6px;
+  color: #34201d;
+  font: 500 17px Georgia, "Times New Roman", serif;
+}
+.self-care-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 13px;
+}
+.self-care-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eee2dc;
+}
+.self-care-feedback > span {
+  color: #66534d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.self-care-feedback [role="group"] { display: flex; gap: 6px; }
+.self-care-feedback button { min-height: 36px; padding: 6px 10px; }
+.self-care-feedback button[aria-pressed="true"] {
+  border-color: #76866e;
+  background: #e8eee4;
+  color: #34452f;
+}
+.self-care-empty {
+  margin: 12px 0;
+  padding: 18px;
+  border: 1px dashed #c9b6ad;
+  border-radius: 12px;
+  color: #66534d;
+  font-size: 13px;
+  text-align: center;
+}
+.self-care-reminder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  margin-top: 17px;
+  padding: 15px 17px;
+  border: 1px solid #e7d4cc;
+  border-radius: 14px;
+  background: rgba(255, 253, 249, .88);
+}
+.self-care-reminder-toggle, .self-care-reminder-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #493b36;
+  font-size: 12px;
+}
+.self-care-reminder-time { flex-direction: column; align-items: flex-start; }
+.self-care-reminder-time input {
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 1px solid #cbb8ad;
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #34201d;
+  font: inherit;
+}
+.self-care-reminder-time input:disabled { opacity: .6; }
+.self-care-reminder-message {
+  margin-top: 8px !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #e8eee4;
+  color: #34452f !important;
+}
+.self-care-disclaimer { font-size: 12px; }
+@media (max-width: 760px) {
+  .self-care-suggestion-grid { grid-template-columns: 1fr; }
+  .self-care-reminder { grid-template-columns: 1fr 1fr; align-items: start; }
+  .self-care-reminder-copy { grid-column: 1 / -1; }
+}
+@media (max-width: 420px) {
+  .self-care-reminder { grid-template-columns: 1fr; }
+  .self-care-reminder-copy { grid-column: auto; }
+  .self-care-toolbar { align-items: stretch; }
+  .self-care-categories { display: grid; grid-template-columns: 1fr 1fr; }
+  .self-care-category-button { justify-content: flex-start; }
+  .self-care-favorites-toggle { align-self: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .self-care-progress span, .self-care-category-button, .self-care-favorites-toggle,
+  .self-care-icon-button, .self-care-check-button { transition: none; }
+}
+
 /* Finishing touches: floral title marks and calm, reduced-motion-friendly movement. */
 .page-card > h2::after {
   content: "";

@@ -39,6 +39,7 @@ import {
 import { healthLessons } from "./content/healthLessons";
 import { CareGuidancePage } from "./pages/CareGuidancePage";
 import { InsightsPage } from "./pages/InsightsPage";
+import { SelfCareSection } from "./pages/SelfCareSection";
 import {
   addDays,
   daysBetween,
@@ -48,6 +49,7 @@ import {
 } from "./utils/cycle";
 import { getCrossCyclePatterns } from "./utils/insights";
 import { validateImportData } from "./utils/importData";
+import { normalizeSelfCareData } from "./utils/selfCare";
 import { upsertPeriodRecord, upsertSymptomRecord } from "./utils/trackingRecords";
 import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -67,6 +69,7 @@ const encryptedStorageKeys = [
   "cyclecare_periods",
   "cyclecare_symptoms",
   "cyclecare_daily_logs",
+  "cyclecare_self_care",
   "cyclecare_reminders",
   "cyclecare_pregnancy_mode",
   "cyclecare_age_group",
@@ -751,6 +754,14 @@ function Dashboard({ discreetMode }) {
     : null;
   const cycleEstimate = getCycleEstimate(entries);
   const pregnancyMode = getHealthItem("cyclecare_pregnancy_mode") === "true";
+  const getSelfCareData = useCallback(
+    () => getHealthItem("cyclecare_self_care"),
+    []
+  );
+  const saveSelfCareData = useCallback(
+    (value) => setHealthItem("cyclecare_self_care", value),
+    []
+  );
 
   function handleLogPeriod(event) {
     event.preventDefault();
@@ -1031,34 +1042,13 @@ function Dashboard({ discreetMode }) {
         </button>
       </section>
 
-      <section className="self-care-section" aria-labelledby="self-care-heading">
-        <FloralDecoration className="floral-decoration-self-care" />
-        <div className="self-care-heading">
-          <span className="eyebrow">SMALL MOMENTS OF COMFORT</span>
-          <h2 id="self-care-heading">Little Comforts, Better Days</h2>
-          <p>
-            Discover simple ways to stay hydrated, feel comfortable, and care
-            for yourself throughout your cycle.
-          </p>
-        </div>
-        <div className="refreshment-grid">
-          {selfCareRefreshments.map((item) => (
-            <article className="refreshment-card" key={item.kind}>
-              <div className="refreshment-illustration">
-                <RefreshmentIllustration kind={item.kind} label={item.alt} />
-              </div>
-              <div className="refreshment-copy">
-                <h3>{item.name}</h3>
-                <p>{item.description}</p>
-                <small>{item.note}</small>
-              </div>
-            </article>
-          ))}
-        </div>
-        <p className="self-care-disclaimer">
-          These are general comfort ideas, not medical advice or treatments.
-        </p>
-      </section>
+      <SelfCareSection
+        getData={getSelfCareData}
+        setData={saveSelfCareData}
+        localDateString={localDateString}
+        Illustration={RefreshmentIllustration}
+        refreshmentItems={selfCareRefreshments}
+      />
 
       <section className="pregnancy-info-teaser">
         <div>
@@ -3252,6 +3242,9 @@ function SettingsPage({
         pregnancyMode: getHealthItem("cyclecare_pregnancy_mode") === "true",
         ageGroup,
         trackedSymptoms,
+        selfCare: normalizeSelfCareData(
+          JSON.parse(getHealthItem("cyclecare_self_care") || "null")
+        ),
         exportedAt: new Date().toISOString(),
       };
       downloadFile(
@@ -3302,10 +3295,11 @@ function SettingsPage({
         today: localDateString(),
         availableSymptoms,
       });
-      if (!window.confirm("Replace the current period and symptom records with the valid records in this file? Export a backup first if you may need the current records.")) return;
+      if (!window.confirm("Replace the current period, symptom, and self-care records with the valid records in this file? Export a backup first if you may need the current records.")) return;
       setHealthItem("cyclecare_periods", JSON.stringify(imported.periods));
       setHealthItem("cyclecare_symptoms", JSON.stringify(imported.symptoms));
       setHealthItem("cyclecare_reminders", JSON.stringify(imported.reminders));
+      setHealthItem("cyclecare_self_care", JSON.stringify(imported.selfCare));
       setHealthItem("cyclecare_pregnancy_mode", String(imported.pregnancyMode));
       setHealthItem("cyclecare_age_group", imported.ageGroup);
       setHealthItem("cyclecare_tracked_symptoms", JSON.stringify(imported.trackedSymptoms));

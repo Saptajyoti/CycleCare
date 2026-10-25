@@ -20,6 +20,10 @@ Use a private/incognito browser profile or disposable data. **Before deletion, i
 - [ ] Overview dashboard: verify recorded history is labelled as records, the next period range is labelled as an estimate, and an unusually long latest gap requests review instead of showing an estimate. Verify pregnancy mode pauses the estimate and Discreet Mode hides personal cycle dates.
 - [ ] Recent check-ins: add multiple symptom and mood entries, return to Overview, and verify the three most recent records appear in date order with a route to symptom logging. Verify the empty state before any check-ins and that Discreet Mode hides record details.
 - [ ] Care prompts: create a record that triggers care guidance, verify only logged facts are shown on Overview, and use the link to open the full care page and named source.
+- [ ] Self-care categories: open each Nutrition, Refreshments, Relaxation, and Physical comfort section. Verify meal/hydration ideas, water and caffeine-free drink choices, breathing/relaxation prompts, and gentle movement appear without cure, hormone-regulation, or treatment promises.
+- [ ] Self-care checklist and favorites: mark suggestions done, switch categories, save/remove favorites, reload, and verify saved state and today's checklist remain. Confirm the checklist resets for a different local date and is described as optional rather than a score.
+- [ ] Self-care feedback: record both helpful and not-helpful responses for suggestions. Verify feedback is local, editable, and available in JSON export/import; do not infer medical benefit from it.
+- [ ] Self-care reminder: enable a time, leave the Overview open until that time, and verify one in-page reminder appears for that local day. Reload and confirm it does not repeat that day; verify it is clearly described as unavailable when the app is closed and can be disabled.
 
 ## Logging and care guidance
 

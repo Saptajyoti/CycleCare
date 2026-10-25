@@ -1,4 +1,8 @@
 import { hasOverlappingPeriods, parseDateOnly } from "./cycle.js";
+import {
+  createEmptySelfCareData,
+  validateSelfCareData,
+} from "./selfCare.js";
 
 const periodFlows = ["spotting", "light", "medium", "heavy"];
 const moods = ["very-low", "low", "okay", "good", "very-good"];
@@ -114,6 +118,8 @@ export function validateImportData(data, { today, availableSymptoms }) {
     symptoms.filter((entry) => entry.id !== undefined).length ||
     !validReminders ||
     new Set(reminders.map((reminder) => reminder?.id)).size !== reminders.length ||
+    (data.selfCare !== undefined &&
+      !validateSelfCareData(data.selfCare, today)) ||
     !validProfile
   ) {
     throw new Error("Export contains invalid or unsupported records");
@@ -123,6 +129,9 @@ export function validateImportData(data, { today, availableSymptoms }) {
     periods,
     symptoms,
     reminders,
+    selfCare: data.selfCare === undefined
+      ? createEmptySelfCareData()
+      : data.selfCare,
     pregnancyMode: data.pregnancyMode === true,
     ageGroup: ageGroups.includes(data.ageGroup) ? data.ageGroup : "adult",
     trackedSymptoms: Array.isArray(data.trackedSymptoms)

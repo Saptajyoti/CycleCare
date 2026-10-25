@@ -24,6 +24,9 @@ profile; the app does not send them to a CycleCare server.
   guidance for concerning symptoms without asking Gemini.
 - Opt-in reminders while the Reminders page is open and optional pregnancy
   information mode.
+- An interactive Overview self-care area covering nutrition, refreshments,
+  relaxation, and physical comfort, with a daily checklist, saved favorites,
+  optional feedback on comfort, and an in-app reminder while Overview is open.
 - A warm ivory and blush botanical theme, responsive desktop/mobile preview,
   Discreet Mode, text-size and contrast preferences, and optional encrypted
   local storage.
@@ -79,7 +82,9 @@ unlocked.
 
 Exports contain sensitive health information; keep exported files private.
 Import validates supported fields, record types, dates, uniqueness, and a 5 MB
-file-size limit before replacing data, after confirmation. Deletion removes
+file-size limit before replacing data, after confirmation. Self-care favorites,
+daily checklist entries, comfort feedback, and reminder preference are included
+in JSON export/import and the optional encrypted vault. Deletion removes
 CycleCare keys from this browser's localStorage and verifies the keys are
 absent. The application has no account, sync, analytics, or health-record
 transmission service. Standard network metadata can be processed by the
@@ -209,8 +214,8 @@ confirm ovulation, diagnose a condition, or guide contraception decisions.
 
 ## Limitations and review
 
-- Reminders are checked while the Reminders page is open; background delivery
-  after the app closes is not supported.
+- Reminders are checked while the Reminders page or Overview self-care area is
+  open; background delivery after the app closes is not supported.
 - Some supplementary Learn articles and other app areas are English-only;
   additional Indian-language translations should be prioritized based on
   community needs.

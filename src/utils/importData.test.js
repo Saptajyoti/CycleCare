@@ -44,6 +44,7 @@ test("accepts valid export data and fills optional profile defaults", () => {
   assert.deepEqual(reminders, []);
   assert.deepEqual(trackedSymptoms, availableSymptoms);
   assert.equal(pregnancyMode, false);
+  assert.equal(validateImportData({ periods: [], symptoms: [] }, options).selfCare.version, 1);
 });
 
 test("accepts valid period, symptom, reminder, and profile fields", () => {
@@ -52,6 +53,48 @@ test("accepts valid period, symptom, reminder, and profile fields", () => {
   assert.equal(imported.periods.length, 2);
   assert.equal(imported.symptoms.length, 1);
   assert.equal(imported.reminders[0].time, "20:00");
+});
+
+test("accepts valid self-care preferences and checklist data", () => {
+  const exportData = validExport();
+  exportData.selfCare = {
+    version: 1,
+    completedByDate: {
+      "2025-05-30": ["balanced-plate", "slow-breathing"],
+    },
+    favorites: ["fresh-water", "gentle-stretch"],
+    comfortFeedback: {
+      "fresh-water": { date: "2025-05-30", helped: true },
+    },
+    reminder: {
+      enabled: true,
+      time: "20:15",
+      lastFiredDate: "2025-05-29",
+    },
+  };
+  const imported = validateImportData(exportData, options);
+  assert.deepEqual(imported.selfCare, exportData.selfCare);
+});
+
+test("rejects malformed self-care dates, items, feedback, and reminder settings", () => {
+  const cases = [
+    (data) => { data.completedByDate = { "2025-02-30": ["balanced-plate"] }; },
+    (data) => { data.favorites = ["unknown-suggestion"]; },
+    (data) => { data.comfortFeedback = { "fresh-water": { date: "2025-05-30", helped: "yes" } }; },
+    (data) => { data.reminder.time = "25:00"; },
+  ];
+  for (const change of cases) {
+    const data = validExport();
+    data.selfCare = {
+      version: 1,
+      completedByDate: {},
+      favorites: [],
+      comfortFeedback: {},
+      reminder: { enabled: false, time: "20:00", lastFiredDate: "" },
+    };
+    change(data.selfCare);
+    assert.throws(() => validateImportData(data, options));
+  }
 });
 
 test("rejects invalid, future, and duplicate period dates", () => {
