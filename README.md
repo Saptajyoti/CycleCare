@@ -43,7 +43,9 @@ the shell, pages, persistence operations, and content; reusable date and cycle
 estimate functions are in `src/utils/cycle.js`, with tests in
 `src/utils/cycle.test.js`. Learning content is also maintained in
 `src/content/healthLessons.js`. Styling is in `src/App.css` and `src/index.css`.
-Navigation is component-state based; there is no configured router or backend.
+Navigation is component-state based; there is no configured router. The
+optional Gemini assistant uses a separate Express backend in `server/`; core
+CycleCare functionality does not require it.
 
 `react-router-dom` and `recharts` are installed but not used by the current
 application.
@@ -95,6 +97,58 @@ npm run dev
 The frontend calls `http://localhost:5000/api/assistant` only after the user
 explicitly consents. That preference stays local to the browser and can be
 revoked from Ask.
+
+## Deploy to Render
+
+The frontend is a Vite static site rooted at the repository root. The included
+`render.yaml` configures its build command as:
+
+```bash
+npm ci --include=dev && npm run build
+```
+
+It publishes `dist`. Including devDependencies is intentional: Vite and its
+React plugin are build tools, and Render environments that omit
+devDependencies would otherwise fail with `vite: not found`. Keep these tools
+in the root `devDependencies`; do not move them into runtime dependencies.
+
+The Express service in `server/` is optional and is only needed for the
+consent-based Gemini assistant. If enabling it on Render, create a separate
+Web Service with `server` as its root directory, `npm ci` as its build command,
+and `npm start` as its start command. Set `GEMINI_API_KEY` as a secret and
+`CLIENT_ORIGIN` to `https://cycle-care-wlhg.onrender.com`. The backend also
+allows `http://localhost:5173`; comma-separated additional exact origins can
+be provided in `CLIENT_ORIGIN`. Render's `PORT` is used automatically. The
+backend serves `GET /api/health` and `POST /api/assistant`.
+
+The frontend Render Blueprint sets `VITE_ASSISTANT_API_URL` to
+`https://cycle-care-b.onrender.com/api/assistant`. It is a public URL, not a
+secret, and is embedded into the frontend at build time. For local development,
+the frontend defaults to `http://localhost:5000/api/assistant`.
+
+Configure these variables in Render:
+
+| Service | Variable | Value |
+| --- | --- | --- |
+| Static Site (repository root) | `VITE_ASSISTANT_API_URL` | `https://cycle-care-b.onrender.com/api/assistant` |
+| Web Service (root directory `server`) | `GEMINI_API_KEY` | Your Gemini API key, stored as a secret |
+| Web Service (root directory `server`) | `GEMINI_MODEL` | `gemini-3.5-flash-lite` (optional; this is the default) |
+| Web Service (root directory `server`) | `CLIENT_ORIGIN` | `https://cycle-care-wlhg.onrender.com` |
+| Web Service (root directory `server`) | `GEMINI_TIMEOUT_MS` | `30000` (optional; this is the default) |
+
+Do not set the Gemini key in a frontend variable or expose it to the browser.
+Do not include private CycleCare records in assistant requests: after explicit
+consent, the frontend sends only `{ "message": "<the user's question>",
+"consent": true }`. The backend should use `npm ci` to build/install and
+`npm start` to run. Configure its Render health check to `/api/health`.
+
+To verify the integration after configuring Render, check
+`https://cycle-care-b.onrender.com/api/health`, run `npm test` at the repository
+root and `npm test` in `server/`, then build the frontend with `npm run build`.
+The health endpoint checks service availability; sending an actual assistant
+question is required to verify Gemini credentials and provider access.
+Without the backend, the offline assistant and the rest of the frontend remain
+available.
 
 Available checks and commands:
 

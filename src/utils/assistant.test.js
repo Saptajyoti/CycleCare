@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AI_CONSENT_STORAGE_KEY, hasAiConsent, requestAssistantResponse, setAiConsent } from "./assistant.js";
+import {
+  AI_CONSENT_STORAGE_KEY,
+  ASSISTANT_ENDPOINT,
+  hasAiConsent,
+  requestAssistantResponse,
+  setAiConsent,
+} from "./assistant.js";
 
 function storage() {
   const values = new Map();
@@ -14,6 +20,10 @@ test("stores consent locally and removes it when revoked", () => {
   assert.equal(local.getItem(AI_CONSENT_STORAGE_KEY), "true");
   setAiConsent(false, local);
   assert.equal(hasAiConsent(local), false);
+});
+
+test("uses the local assistant endpoint outside a production build", () => {
+  assert.equal(ASSISTANT_ENDPOINT, "http://localhost:5000/api/assistant");
 });
 
 test("sends only the message and explicit consent to the assistant endpoint", async () => {
@@ -37,5 +47,14 @@ test("turns an expired assistant request into a helpful timeout message", async 
       1
     ),
     /took too long/
+  );
+});
+
+test("uses a safe message when the assistant endpoint cannot be reached", async () => {
+  await assert.rejects(
+    requestAssistantResponse("What is PMS?", async () => {
+      throw new TypeError("Failed to fetch");
+    }),
+    /could not be reached/
   );
 });

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: cyclecare
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_ASSISTANT_API_URL
+        value: https://cycle-care-b.onrender.com/api/assistant

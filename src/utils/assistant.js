@@ -1,4 +1,8 @@
-export const ASSISTANT_ENDPOINT = "http://localhost:5000/api/assistant";
+export const ASSISTANT_ENDPOINT =
+  import.meta.env?.VITE_ASSISTANT_API_URL ||
+  (import.meta.env?.PROD
+    ? "https://cycle-care-b.onrender.com/api/assistant"
+    : "http://localhost:5000/api/assistant");
 export const AI_CONSENT_STORAGE_KEY = "cyclecare_ai_consent";
 const ASSISTANT_TIMEOUT_MS = 35000;
 
@@ -31,14 +35,17 @@ export async function requestAssistantResponse(
     if (error?.name === "AbortError") {
       throw new Error("The AI assistant took too long to respond. The offline answers below are still available.");
     }
-    throw error;
+    throw new Error("The AI assistant could not be reached. Please try again later or use the offline answers below.");
   } finally {
     clearTimeout(timeout);
   }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || typeof payload.answer !== "string" || !payload.answer.trim()) {
-    throw new Error(payload.error || "The AI assistant is temporarily unavailable.");
+    throw new Error(
+      (typeof payload.error === "string" && payload.error) ||
+        "The AI assistant is temporarily unavailable."
+    );
   }
   return payload.answer.trim();
 }

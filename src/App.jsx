@@ -1331,6 +1331,7 @@ function CalendarPage() {
               key={day}
               type="button"
               disabled={dateString > localDateString()}
+              aria-pressed={selectedDate === dateString}
               className={`calendar-day ${
                 isPeriodDay ? "period-day" : ""
               } ${isPeriodStart ? "period-start-day" : ""} ${isPeriodEnd ? "period-end-day" : ""} ${isEstimatedDay && !isPeriodDay ? "estimated-day" : ""} ${hasSymptomLog ? "symptom-day" : ""} ${selectedDate === dateString ? "selected-calendar-day" : ""}`}
@@ -1360,7 +1361,7 @@ function CalendarPage() {
       </div>
 
       {selectedDate && (
-        <section className="calendar-day-editor">
+        <section className="calendar-day-editor" key={selectedDate}>
           <h3>{formatDate(selectedDate)}</h3>
           <label className="check-field">
             <input type="checkbox" checked={selectedIsPeriod} onChange={(event) => {
@@ -1374,6 +1375,7 @@ function CalendarPage() {
               <label className="field-label" htmlFor="calendar-period-end">Last day of this period</label>
               <input
                 id="calendar-period-end"
+                className="animated-date-input"
                 type="date"
                 value={selectedPeriodEnd}
                 min={selectedDate}
@@ -1387,7 +1389,7 @@ function CalendarPage() {
                 ? `${daysBetween(selectedDate, selectedPeriodEnd) + 1} day${daysBetween(selectedDate, selectedPeriodEnd) === 0 ? "" : "s"} recorded`
                 : "Choose a last day on or after the start date."}</p>
               <label className="field-label" htmlFor="calendar-flow">Flow</label>
-              <AnimatedSelect id="calendar-flow" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
+              <AnimatedSelect id="calendar-flow" className="calendar-flow-select" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
                 <option value="spotting">Spotting</option><option value="light">Light</option><option value="medium">Medium</option><option value="heavy">Heavy</option>
               </AnimatedSelect>
             </>
@@ -2722,30 +2724,32 @@ function SymptomsPage({ editRecord, onEditComplete }) {
               { value: "heavy", label: "Heavy" },
             ]}
           />
-          <label className="field-label" htmlFor="pain-level" id="pain-heading">
-            Pain level <span>{pain} / 10</span>
-          </label>
-          <SelectionCards
-            legend="Choose a pain range"
-            value={painBand}
-            onChange={(value) => setPain(value)}
-            className="pain-selection-cards"
-            options={[
-              { value: "none", selectValue: 0, label: "None", description: "0" },
-              { value: "mild", selectValue: 2, label: "Mild", description: "1–3" },
-              { value: "moderate", selectValue: 5, label: "Moderate", description: "4–6" },
-              { value: "severe", selectValue: 8, label: "Severe", description: "7–10" },
-            ]}
-          />
-          <input
-            id="pain-level"
-            type="range"
-            min="0"
-            max="10"
-            value={pain}
-            style={{ "--pain-progress": `${Number(pain) * 10}%` }}
-            onChange={(event) => setPain(event.target.value)}
-          />
+          <div className="pain-level-control">
+            <label className="field-label" htmlFor="pain-level" id="pain-heading">
+              Pain level <span>{pain} / 10</span>
+            </label>
+            <SelectionCards
+              legend="Choose a pain range"
+              value={painBand}
+              onChange={(value) => setPain(value)}
+              className="pain-selection-cards"
+              options={[
+                { value: "none", selectValue: 0, label: "None", description: "0" },
+                { value: "mild", selectValue: 2, label: "Mild", description: "1–3" },
+                { value: "moderate", selectValue: 5, label: "Moderate", description: "4–6" },
+                { value: "severe", selectValue: 8, label: "Severe", description: "7–10" },
+              ]}
+            />
+            <input
+              id="pain-level"
+              type="range"
+              min="0"
+              max="10"
+              value={pain}
+              style={{ "--pain-progress": `${Number(pain) * 10}%` }}
+              onChange={(event) => setPain(event.target.value)}
+            />
+          </div>
           <label className="check-field">
             <input
               type="checkbox"

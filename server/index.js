@@ -5,6 +5,15 @@ const cors = require("cors");
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
+const REQUIRED_ORIGINS = [
+  "https://cycle-care-wlhg.onrender.com",
+  "http://localhost:5173",
+];
+const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set([...REQUIRED_ORIGINS, ...configuredOrigins]);
 const GEMINI_TIMEOUT_MS = Math.min(
   Math.max(Number(process.env.GEMINI_TIMEOUT_MS) || 30000, 5000),
   60000
@@ -13,14 +22,16 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
 // Validate required environment variables
 if (!process.env.GEMINI_API_KEY) {
-  console.error("Missing GEMINI_API_KEY in server/.env");
+  console.error("Missing required GEMINI_API_KEY environment variable.");
   process.exit(1);
 }
 
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    origin(origin, callback) {
+      callback(null, !origin || allowedOrigins.has(origin));
+    },
   })
 );
 
@@ -161,24 +172,34 @@ app.post("/api/assistant", async (req, res) => {
     });
 
     return res.status(502).json({
-      error: "The AI assistant is temporarily unavailable.",
-      details:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : undefined,
+      error: "The AI assistant is temporarily unavailable. Please try again later.",
     });
   }
 });
 
 // Handle invalid JSON
 app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+
   if (error instanceof SyntaxError && error.status === 400) {
     return res.status(400).json({
       error: "Invalid JSON request body.",
     });
   }
 
-  return next(error);
+  if (error.type === "entity.too.large") {
+    return res.status(413).json({
+      error: "Request body is too large.",
+    });
+  }
+
+  console.error("CycleCare API request failed:", {
+    name: error.name,
+    status: error.status,
+  });
+  return res.status(500).json({
+    error: "The server could not process the request.",
+  });
 });
 
 // Start server
