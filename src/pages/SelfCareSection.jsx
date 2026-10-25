@@ -13,6 +13,7 @@ import {
   selfCareCategories,
   selfCareSuggestions,
 } from "../utils/selfCare";
+import { translateSelfCare } from "../utils/translations";
 
 const categoryIcons = {
   nutrition: Utensils,
@@ -22,12 +23,19 @@ const categoryIcons = {
 };
 
 export function SelfCareSection({
+  language,
   getData,
   setData,
   localDateString,
   Illustration,
   refreshmentItems,
 }) {
+  const text = (key, fallback) =>
+    translateSelfCare(language, "ui", key) || fallback;
+  const categoryText = (category, index, fallback) =>
+    translateSelfCare(language, "category", category.id, index) || fallback;
+  const suggestionText = (item, index, fallback) =>
+    translateSelfCare(language, "suggestion", item.id, index) || fallback;
   const [initialState] = useState(() => {
     try {
       return { data: normalizeSelfCareData(getData()), error: "" };
@@ -153,20 +161,20 @@ export function SelfCareSection({
   return (
     <section className="self-care-section" aria-labelledby="self-care-heading">
       <div className="self-care-heading">
-        <span className="eyebrow">SMALL MOMENTS OF COMFORT</span>
-        <h2 id="self-care-heading">Little Comforts, Better Days</h2>
-        <p>Explore gentle, optional ideas and choose what works for you. You can skip any suggestion.</p>
+        <span className="eyebrow">{language === "hi" ? "आराम के छोटे पल" : "SMALL MOMENTS OF COMFORT"}</span>
+        <h2 id="self-care-heading">{text("heading", "Little Comforts, Better Days")}</h2>
+        <p>{text("intro", "Explore gentle, optional ideas and choose what works for you. You can skip any suggestion.")}</p>
       </div>
 
       <section className="self-care-daily" aria-labelledby="self-care-daily-heading">
         <div>
-          <h3 id="self-care-daily-heading">Your daily self-care checklist</h3>
-          <p>{completedCount} of {selfCareSuggestions.length} ideas checked today · {today}</p>
+          <h3 id="self-care-daily-heading">{text("checklist", "Your daily self-care checklist")}</h3>
+          <p>{completedCount} {text("checked", "of")} {selfCareSuggestions.length} {text("ideas", "ideas checked today")} · <time dateTime={today}>{today}</time></p>
         </div>
-        <div className="self-care-progress" role="progressbar" aria-label="Today's optional self-care ideas completed" aria-valuemin={0} aria-valuemax={selfCareSuggestions.length} aria-valuenow={completedCount}>
+        <div className="self-care-progress" role="progressbar" aria-label={text("checklist", "Today's optional self-care ideas completed")} aria-valuemin={0} aria-valuemax={selfCareSuggestions.length} aria-valuenow={completedCount}>
           <span style={{ width: `${Math.round((completedCount / selfCareSuggestions.length) * 100)}%` }} />
         </div>
-        <p className="privacy-hint">This is a flexible checklist, not a goal or health score.</p>
+        <p className="privacy-hint">{text("checklistNote", "This is a flexible checklist, not a goal or health score.")}</p>
       </section>
 
       <div className="self-care-toolbar">
@@ -185,7 +193,7 @@ export function SelfCareSection({
                 }}
               >
                 <Icon size={16} aria-hidden="true" />
-                {category.label}
+                {categoryText(category, 0, category.label)}
               </button>
             );
           })}
@@ -197,21 +205,25 @@ export function SelfCareSection({
           onClick={() => setShowFavorites((current) => !current)}
         >
           <Star size={16} aria-hidden="true" />
-          Favorites ({data.favorites.length})
+          {text("favorites", "Favorites")} ({data.favorites.length})
         </button>
       </div>
 
       <p className="self-care-category-description">
         {showFavorites
-          ? "Your saved ideas are stored on this device."
-          : selfCareCategories.find((category) => category.id === activeCategory)?.description}
+          ? text("savedOnDevice", "Your saved ideas are stored on this device.")
+          : categoryText(
+            selfCareCategories.find((category) => category.id === activeCategory),
+            1,
+            selfCareCategories.find((category) => category.id === activeCategory)?.description
+          )}
       </p>
       {!showFavorites && activeCategory === "nutrition" && (
         <p className="self-care-nutrition-note">
-          Nutritional needs differ. When possible, variety across staple foods,
+          {text("nutritionNote", `Nutritional needs differ. When possible, variety across staple foods,
           vegetables or fruit, and protein sources can be one flexible way to
           think about meals; choose foods that fit your preferences, access, and
-          any advice from your care team.
+          any advice from your care team.`)}
         </p>
       )}
       {storageMessage && <p className="self-care-storage-error" role="alert">{storageMessage}</p>}
@@ -223,31 +235,36 @@ export function SelfCareSection({
             const Icon = categoryIcons[item.category];
             const feedback = data.comfortFeedback[item.id];
             const feedbackToday = feedback?.date === today ? feedback.helped : null;
+            const itemTitle = suggestionText(item, 0, item.title);
+            const itemDescription = suggestionText(item, 1, item.description);
+            const itemDetail = suggestionText(item, 2, item.detail);
             return (
               <article className="refreshment-card self-care-suggestion-card" key={item.id}>
                 {item.kind && Illustration && (
                   <div className="refreshment-illustration">
                     <Illustration
                       kind={item.kind}
-                      label={refreshmentItems.find((refreshment) => refreshment.kind === item.kind)?.alt || item.title}
+                      label={language === "hi"
+                        ? itemTitle
+                        : refreshmentItems.find((refreshment) => refreshment.kind === item.kind)?.alt || item.title}
                     />
                   </div>
                 )}
                 <div className="refreshment-copy">
-                  <div className="self-care-card-category"><Icon size={14} aria-hidden="true" />{category.label}</div>
-                  <h4>{item.title}</h4>
-                  <p>{item.description}</p>
-                  <small>{item.detail}</small>
+                  <div className="self-care-card-category"><Icon size={14} aria-hidden="true" />{categoryText(category, 0, category.label)}</div>
+                  <h4>{itemTitle}</h4>
+                  <p>{itemDescription}</p>
+                  <small>{itemDetail}</small>
                   <div className="self-care-card-actions">
                     <button
                       type="button"
                       className={`self-care-icon-button ${data.favorites.includes(item.id) ? "is-saved" : ""}`}
-                      aria-label={`${data.favorites.includes(item.id) ? "Remove" : "Save"} ${item.title} ${data.favorites.includes(item.id) ? "from" : "to"} favorites`}
+                      aria-label={`${text(data.favorites.includes(item.id) ? "remove" : "save", data.favorites.includes(item.id) ? "Remove" : "Save")} ${itemTitle} ${text("favorites", "favorites")}`}
                       aria-pressed={data.favorites.includes(item.id)}
                       onClick={() => toggleFavorite(item.id)}
                     >
                       <Star size={16} aria-hidden="true" />
-                      {data.favorites.includes(item.id) ? "Saved" : "Save"}
+                      {text(data.favorites.includes(item.id) ? "saved" : "save", data.favorites.includes(item.id) ? "Saved" : "Save")}
                     </button>
                     <button
                       type="button"
@@ -256,14 +273,14 @@ export function SelfCareSection({
                       onClick={() => toggleChecklist(item.id)}
                     >
                       {completed.has(item.id) ? <Check size={15} aria-hidden="true" /> : null}
-                      {completed.has(item.id) ? "Done today" : "Add to today's checklist"}
+                      {text(completed.has(item.id) ? "doneToday" : "addChecklist", completed.has(item.id) ? "Done today" : "Add to today's checklist")}
                     </button>
                   </div>
                   <div className="self-care-feedback">
-                    <span>{feedbackToday === null ? "Did this help you feel more comfortable today?" : feedbackToday ? "Marked as helpful today." : "Thanks for letting us know."}</span>
-                    <div role="group" aria-label={`Did ${item.title} help you feel more comfortable?`}>
-                      <button type="button" aria-pressed={feedbackToday === true} onClick={() => recordComfort(item.id, true)}>Yes</button>
-                      <button type="button" aria-pressed={feedbackToday === false} onClick={() => recordComfort(item.id, false)}>Not today</button>
+                    <span>{feedbackToday === null ? text("feedbackPrompt", "Did this help you feel more comfortable today?") : feedbackToday ? text("feedbackHelpful", "Marked as helpful today.") : text("feedbackThanks", "Thanks for letting us know.")}</span>
+                    <div role="group" aria-label={`${itemTitle}: ${text("feedbackPrompt", "Did this help you feel more comfortable today?")}`}>
+                      <button type="button" aria-pressed={feedbackToday === true} onClick={() => recordComfort(item.id, true)}>{text("yes", "Yes")}</button>
+                      <button type="button" aria-pressed={feedbackToday === false} onClick={() => recordComfort(item.id, false)}>{text("notToday", "Not today")}</button>
                     </div>
                   </div>
                 </div>
@@ -272,16 +289,16 @@ export function SelfCareSection({
           })}
         </div>
       ) : (
-        <p className="self-care-empty">No favorites saved yet. Save an idea to find it here.</p>
+        <p className="self-care-empty">{text("noFavorites", "No favorites saved yet. Save an idea to find it here.")}</p>
       )}
 
-      <section className="self-care-reminder" aria-labelledby="self-care-reminder-heading">
+      <section className="self-care-reminder" aria-labelledby="self-care-reminder-heading" lang={language}>
         <div className="self-care-reminder-copy">
-          <h3 id="self-care-reminder-heading">Optional daily reminder</h3>
-          <p>Choose a gentle prompt time. It appears only while CycleCare is open on the Overview page; it does not send a notification after you leave or close the app.</p>
+          <h3 id="self-care-reminder-heading">{text("reminderHeading", "Optional daily reminder")}</h3>
+          <p>{text("reminderDescription", "Choose a gentle prompt time. It appears only while CycleCare is open on the Overview page; it does not send a notification after you leave or close the app.")}</p>
           {reminderReached && (
             <p className="self-care-reminder-message" role="status">
-              A gentle reminder: take a moment for any self-care that feels right today—or skip it.
+              {text("reminderText", "A gentle reminder: take a moment for any self-care that feels right today—or skip it.")}
             </p>
           )}
         </div>
@@ -291,10 +308,10 @@ export function SelfCareSection({
             checked={data.reminder.enabled}
             onChange={(event) => updateReminder("enabled", event.target.checked)}
           />
-          <span>Enable reminder</span>
+          <span>{text("enableReminder", "Enable reminder")}</span>
         </label>
         <label className="self-care-reminder-time">
-          <span>Reminder time</span>
+          <span>{text("reminderTime", "Reminder time")}</span>
           <input
             type="time"
             value={data.reminder.time}
@@ -305,7 +322,7 @@ export function SelfCareSection({
       </section>
 
       <p className="self-care-disclaimer">
-        These are optional general comfort and wellbeing ideas, not medical advice or treatment. No food or drink can be promised to cure cramps, regulate hormones, or treat a condition. Stop any activity that feels uncomfortable. Seek professional advice for severe or worsening symptoms.
+        {text("disclaimer", "These are optional general comfort and wellbeing ideas, not medical advice or treatment. No food or drink can be promised to cure cramps, regulate hormones, or treat a condition. Stop any activity that feels uncomfortable. Seek professional advice for severe or worsening symptoms.")}
       </p>
     </section>
   );

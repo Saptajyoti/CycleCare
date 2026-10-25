@@ -50,6 +50,7 @@ import {
 import { getCrossCyclePatterns } from "./utils/insights";
 import { validateImportData } from "./utils/importData";
 import { normalizeSelfCareData } from "./utils/selfCare";
+import { navigationKeys, translate } from "./utils/translations";
 import { upsertPeriodRecord, upsertSymptomRecord } from "./utils/trackingRecords";
 import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -93,6 +94,10 @@ const navigation = [
   { name: "Reminders", icon: Bell },
   { name: "Pregnancy", icon: Baby },
 ];
+
+function pageLabel(language, page) {
+  return translate(language, navigationKeys[page]);
+}
 
 function AnimatedSelect({ id, value, onChange, children, className = "" }) {
   const [open, setOpen] = useState(false);
@@ -248,6 +253,10 @@ function SelectionCards({ legend, value, onChange, options, className = "" }) {
 function App() {
   const [activePage, setActivePage] = useState("Overview");
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuTriggerRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const pageHeadingRef = useRef(null);
+  const previousPageRef = useRef(activePage);
   const [devicePreview, setDevicePreview] = useState(
     () => window.matchMedia("(max-width: 700px)").matches ? "mobile" : "desktop"
   );
@@ -281,6 +290,47 @@ function App() {
     setActivePage(page);
     setMenuOpen(false);
   }
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    window.requestAnimationFrame(() => menuTriggerRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (previousPageRef.current === activePage) return;
+    previousPageRef.current = activePage;
+    pageHeadingRef.current?.focus();
+  }, [activePage]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const getFocusableItems = () =>
+      Array.from(
+        sidebarRef.current?.querySelectorAll(
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      ).filter((item) => item.getClientRects().length);
+    getFocusableItems()[0]?.focus();
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusableItems = getFocusableItems();
+      const firstItem = focusableItems[0];
+      const lastItem = focusableItems[focusableItems.length - 1];
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem?.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [menuOpen, closeMenu]);
 
   useEffect(() => {
     const handleNavigation = (event) => navigateTo(event.detail);
@@ -425,9 +475,9 @@ function App() {
         <VaultUnlockDialog onUnlock={unlockVault} />
       ) : (
       <>
-      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
+      <aside ref={sidebarRef} id="primary-navigation" className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} aria-label={language === "hi" ? "मुख्य नेविगेशन" : "Main navigation"}>
         <div className="brand">
-          <button className="brand-home" type="button" onClick={() => navigateTo("Overview")} aria-label={discreetMode ? "Diary home" : "CycleCare home"}>
+          <button className="brand-home" type="button" onClick={() => navigateTo("Overview")} aria-label={discreetMode ? (language === "hi" ? "डायरी का मुख्य पृष्ठ" : "Diary home") : (language === "hi" ? "CycleCare का मुख्य पृष्ठ" : "CycleCare home")}>
             {discreetMode ? (
               <><span className="brand-icon"><BookOpen size={23} /></span><span>Diary</span></>
             ) : (
@@ -437,14 +487,14 @@ function App() {
 
           <button
             className="close-menu"
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close menu"
+            onClick={closeMenu}
+            aria-label={translate(language, "closeMenu")}
           >
             <X size={20} />
           </button>
         </div>
 
-        <p className="nav-label">YOUR SPACE</p>
+        <p className="nav-label">{translate(language, "yourSpace")}</p>
 
         <nav className="navigation">
           {navigation
@@ -455,10 +505,11 @@ function App() {
               className={`nav-item ${
                 activePage === name ? "active" : ""
               }`}
+              aria-current={activePage === name ? "page" : undefined}
               onClick={() => navigateTo(name)}
             >
               <Icon size={19} />
-              <span>{name}</span>
+              <span>{pageLabel(language, name)}</span>
               {activePage === name && <span className="active-dot" />}
             </button>
           ))}
@@ -470,10 +521,10 @@ function App() {
               <ShieldCheck size={19} />
             </div>
 
-            <h4>Your privacy matters</h4>
+            <h4>{translate(language, "privacyMatters")}</h4>
 
             <p>
-              Your health records are stored locally in this browser.
+              {translate(language, "localRecords")}
             </p>
           </div>
 
@@ -481,20 +532,21 @@ function App() {
             className={`nav-item ${
               activePage === "Settings" ? "active" : ""
             }`}
+            aria-current={activePage === "Settings" ? "page" : undefined}
             onClick={() => navigateTo("Settings")}
           >
             <Settings size={19} />
-            <span>Settings</span>
+            <span>{pageLabel(language, "Settings")}</span>
           </button>
 
-          <p className="sidebar-footer">A little care, every day ♡</p>
+          <p className="sidebar-footer">{language === "hi" ? "हर दिन थोड़ी देखभाल ♡" : "A little care, every day ♡"}</p>
         </div>
       </aside>
 
       {menuOpen && (
         <div
           className="sidebar-overlay"
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         />
       )}
 
@@ -502,16 +554,21 @@ function App() {
         <header className="topbar">
           <div className="topbar-heading">
             <button
+              ref={menuTriggerRef}
               className="menu-button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
+              aria-label={translate(language, "openMenu")}
+              aria-expanded={menuOpen}
+              aria-controls="primary-navigation"
             >
               <Menu size={22} />
             </button>
 
             <div>
-              <p className="topbar-date">YOUR PERSONAL WELLNESS SPACE</p>
-              <h2 className="page-heading" key={activePage}>{activePage}</h2>
+              <p className="topbar-date">{translate(language, "personalWellness")}</p>
+              <h2 className="page-heading" key={activePage} ref={pageHeadingRef} tabIndex={-1} lang={language}>
+                {pageLabel(language, activePage)}
+              </h2>
             </div>
           </div>
 
@@ -519,7 +576,7 @@ function App() {
 
         <div className="page-transition" key={activePage}>
         {activePage === "Overview" ? (
-          <Dashboard discreetMode={discreetMode} />
+          <Dashboard discreetMode={discreetMode} language={language} />
         ) : activePage === "My Calendar" ? (
           <CalendarPage />
         ) : activePage === "My Symptoms" ? (
@@ -572,14 +629,14 @@ function App() {
         </div>
       </main>
       {!showOnboarding && !discreetMode && <FloatingAssistant />}
-      <nav className="mobile-navigation" aria-label="Primary navigation">
+      <nav className="mobile-navigation" aria-label={language === "hi" ? "मुख्य नेविगेशन" : "Primary navigation"}>
         {[
-          { name: "Overview", icon: LayoutDashboard, label: "Home" },
-          { name: "My Calendar", icon: CalendarDays, label: "Calendar" },
-          { name: "My Symptoms", icon: Activity, label: "Symptoms" },
-          { name: "Learn", icon: BookOpen, label: "Learn" },
-          { name: "Settings", icon: Settings, label: "Settings" },
-        ].map(({ name, icon: Icon, label }) => (
+          { name: "Overview", icon: LayoutDashboard },
+          { name: "My Calendar", icon: CalendarDays },
+          { name: "My Symptoms", icon: Activity },
+          { name: "Learn", icon: BookOpen },
+          { name: "Settings", icon: Settings },
+        ].map(({ name, icon: Icon }) => (
           <button
             key={name}
             type="button"
@@ -588,7 +645,7 @@ function App() {
             onClick={() => navigateTo(name)}
           >
             <Icon size={19} aria-hidden="true" />
-            <span>{label}</span>
+            <span>{translate(language, name === "Overview" ? "home" : name === "My Calendar" ? "calendar" : name === "My Symptoms" ? "symptoms" : navigationKeys[name] === "navLearn" ? "navLearn" : "navSettings")}</span>
           </button>
         ))}
       </nav>
@@ -739,7 +796,8 @@ const selfCareRefreshments = [
 
 /* -------------------- DASHBOARD -------------------- */
 
-function Dashboard({ discreetMode }) {
+function Dashboard({ discreetMode, language }) {
+  const t = (key) => translate(language, key);
   const [showLogForm, setShowLogForm] = useState(false);
   const [periodStart, setPeriodStart] = useState("");
   const [periodLength, setPeriodLength] = useState("5");
@@ -767,17 +825,17 @@ function Dashboard({ discreetMode }) {
     event.preventDefault();
 
     if (!periodStart) {
-      setMessage("Please select the first day of your period.");
+      setMessage(t("selectPeriodStart"));
       return;
     }
 
     if (periodStart > localDateString()) {
-      setMessage("Please select today or a date in the past.");
+      setMessage(t("pastDateOnly"));
       return;
     }
 
     if (entries.some((entry) => entry.startDate === periodStart)) {
-      setMessage("This period start date is already recorded.");
+      setMessage(t("duplicatePeriodStart"));
       return;
     }
     let updatedEntries;
@@ -805,7 +863,7 @@ function Dashboard({ discreetMode }) {
     setChangesEveryHour(false);
     setLargeClots(false);
     setShowLogForm(false);
-    setMessage("Your period entry has been saved on this device.");
+    setMessage(t("periodSaved"));
 
     window.dispatchEvent(new Event("cyclecare-data-updated"));
   }
@@ -824,18 +882,15 @@ function Dashboard({ discreetMode }) {
         <div className="welcome-copy">
           <span className="eyebrow">
             <Sparkles size={15} />
-            YOUR JOURNEY, YOUR PACE
+            {t("dashboardEyebrow")}
           </span>
 
           <h1>
-            A little more in tune
-            <br />
-            with <span>yourself.</span>
+            {language === "hi" ? t("dashboardTitle") : <>A little more in tune<br />with <span>yourself.</span></>}
           </h1>
 
           <p>
-            Understand your cycle, follow how you feel, and find supportive
-            care that fits your day.
+            {t("dashboardDescription")}
           </p>
 
           <button
@@ -844,12 +899,12 @@ function Dashboard({ discreetMode }) {
             onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Symptoms" }))}
           >
             <Activity size={18} />
-            Log Today’s Symptoms
+            {t("logSymptoms")}
           </button>
 
           <div className="welcome-highlights" aria-label="CycleCare benefits">
-            <span><Heart size={15} />Care that centers you</span>
-            <span><ShieldCheck size={15} />Private by design</span>
+            <span><Heart size={15} />{t("careCenters")}</span>
+            <span><ShieldCheck size={15} />{t("privateDesign")}</span>
           </div>
         </div>
 
@@ -863,13 +918,13 @@ function Dashboard({ discreetMode }) {
 
       <section className="section-heading">
         <div>
-          <h2>Your cycle at a glance</h2>
-          <p>A gentle overview of your personal journey.</p>
+          <h2>{t("cycleAtGlance")}</h2>
+          <p>{t("gentleOverview")}</p>
         </div>
 
         <span className="private-badge">
           <ShieldCheck size={14} />
-          Private
+          {t("private")}
         </span>
       </section>
 
@@ -879,29 +934,29 @@ function Dashboard({ discreetMode }) {
             <div className="stat-icon">
               <Droplets size={20} />
             </div>
-            <span className="stat-caption">YOUR RECORD</span>
+            <span className="stat-caption">{t("yourRecord")}</span>
           </div>
 
           <h3>
             {discreetMode
-              ? "Details hidden"
+              ? t("detailsHidden")
               : latestEntry
-                ? "Period recorded"
-                : "Not yet logged"}
+                ? t("periodRecorded")
+                : t("notYetLogged")}
           </h3>
 
           <p>
             {discreetMode
-              ? "Turn off Discreet Mode in Settings to view personal cycle details."
+              ? (language === "hi" ? "निजी चक्र जानकारी देखने के लिए सेटिंग्स में डिस्क्रीट मोड बंद करें।" : "Turn off Discreet Mode in Settings to view personal cycle details.")
               : latestEntry
-              ? `Last recorded period began ${latestEntry.startDate}.`
-              : "Start by recording your last period."}
+              ? `${t("lastPeriodBegan")} ${latestEntry.startDate}.`
+              : t("startRecording")}
           </p>
           <button
             className="stat-card-link"
             onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
           >
-            {latestEntry ? "View period records" : "Record a period"}
+            {latestEntry ? t("viewPeriodRecords") : t("recordPeriod")}
           </button>
         </article>
 
@@ -910,29 +965,29 @@ function Dashboard({ discreetMode }) {
             <div className="stat-icon soft-icon">
               <CalendarDays size={20} />
             </div>
-            <span className="stat-caption">CYCLE LENGTH</span>
+            <span className="stat-caption">{t("cycleLength")}</span>
           </div>
 
           <h3>
             {discreetMode
-              ? "Details hidden"
+              ? t("detailsHidden")
               : cycleLength !== null
-              ? `${cycleLength} days between starts`
-              : "Getting to know you"}
+              ? (language === "hi" ? `दो शुरुआतों के बीच ${cycleLength} दिन` : `${cycleLength} days between starts`)
+              : t("gettingToKnowYou")}
           </h3>
 
           <p>
             {discreetMode
-              ? "Your health records remain stored locally on this device."
+              ? t("localRecords")
               : cycleLength !== null
-              ? "Based on your two most recent recorded period starts."
-              : "Record at least two period start dates to explore your pattern."}
+              ? t("twoStarts")
+              : t("explorePattern")}
           </p>
           <button
             className="stat-card-link"
             onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "Insights" }))}
           >
-            Explore insights
+            {t("exploreInsights")}
           </button>
         </article>
 
@@ -941,16 +996,16 @@ function Dashboard({ discreetMode }) {
             <div className="stat-icon soft-icon">
               <Activity size={20} />
             </div>
-            <span className="stat-caption">HOW YOU FEEL</span>
+            <span className="stat-caption">{t("howYouFeel")}</span>
           </div>
 
-          <h3>Check in with yourself</h3>
-          <p>Make a little time to notice how you feel today.</p>
+          <h3>{t("checkInWithSelf")}</h3>
+          <p>{t("noticeFeelings")}</p>
           <button
             className="stat-card-link"
             onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Symptoms" }))}
           >
-            Log symptoms
+            {t("logSymptoms")}
           </button>
         </article>
       </section>
@@ -959,34 +1014,34 @@ function Dashboard({ discreetMode }) {
         <section className="dashboard-cycle-card" aria-labelledby="dashboard-estimate-heading">
           <div className="dashboard-cycle-copy">
             <span className="eyebrow">YOUR CYCLE AT A GLANCE</span>
-            <h2 id="dashboard-estimate-heading">Next estimated period</h2>
+            <h2 id="dashboard-estimate-heading">{t("estimatedPeriod")}</h2>
             {cycleEstimate && !cycleEstimate.needsReview ? (
               <>
                 <strong className="dashboard-estimate-date">{formatDate(cycleEstimate.nextStart)}</strong>
-                <p>Likely window: {formatDateRange(cycleEstimate.windowStart, cycleEstimate.windowEnd)}</p>
+                <p>{t("estimatedWindow")} {formatDateRange(cycleEstimate.windowStart, cycleEstimate.windowEnd)}</p>
                 <p>
                   {cycleEstimate.historyStatus === "limited"
-                    ? `Limited history: based on ${cycleEstimate.cyclesUsed} recorded cycles.`
-                    : `Sufficient history for a broader tracking estimate: based on ${cycleEstimate.cyclesUsed} recent recorded cycles.`}
+                    ? `${t("limitedHistory")}: ${language === "hi" ? `${cycleEstimate.cyclesUsed} दर्ज चक्रों पर आधारित।` : `based on ${cycleEstimate.cyclesUsed} recorded cycles.`}`
+                    : `${t("sufficientHistory")}: ${language === "hi" ? `${cycleEstimate.cyclesUsed} हाल के दर्ज चक्रों पर आधारित।` : `based on ${cycleEstimate.cyclesUsed} recent recorded cycles.`}`}
                 </p>
-                <p>Method: the median of recent start-to-start intervals, projected from your latest recorded start.</p>
+                <p>{t("method")}</p>
               </>
             ) : cycleEstimate?.needsReview ? (
-              <p>A recent gap needs review before showing an estimate.</p>
+              <p>{t("needsReview")}</p>
             ) : (
-              <p>Log three period starts to see a date estimate based on your recorded history.</p>
+              <p>{t("logThreeStarts")}</p>
             )}
           </div>
           {latestEntry && (
             <div className="dashboard-cycle-progress">
               <div className="dashboard-cycle-progress-label">
-                <span>Cycle day {Math.max(1, daysBetween(latestEntry.startDate, localDateString()) + 1)}</span>
-                {cycleEstimate && !cycleEstimate.needsReview && <span>Typical cycle: {cycleEstimate.medianCycleLength} days</span>}
+                <span>{language === "hi" ? `चक्र का दिन ${Math.max(1, daysBetween(latestEntry.startDate, localDateString()) + 1)}` : `Cycle day ${Math.max(1, daysBetween(latestEntry.startDate, localDateString()) + 1)}`}</span>
+                {cycleEstimate && !cycleEstimate.needsReview && <span>{language === "hi" ? `सामान्य चक्र: ${cycleEstimate.medianCycleLength} दिन` : `Typical cycle: ${cycleEstimate.medianCycleLength} days`}</span>}
               </div>
               <div
                 className="dashboard-cycle-progress-track"
                 role="progressbar"
-                aria-label="Calendar progress through typical recorded cycle"
+                aria-label={language === "hi" ? "दर्ज चक्र के अनुसार कैलेंडर प्रगति" : "Calendar progress through typical recorded cycle"}
                 aria-valuemin={0}
                 aria-valuemax={cycleEstimate && !cycleEstimate.needsReview ? cycleEstimate.medianCycleLength : 100}
                 aria-valuenow={cycleEstimate && !cycleEstimate.needsReview
@@ -997,7 +1052,7 @@ function Dashboard({ discreetMode }) {
                   ? `${Math.min(100, Math.max(0, ((daysBetween(latestEntry.startDate, localDateString()) + 1) / cycleEstimate.medianCycleLength) * 100))}%`
                   : "0%" }} />
               </div>
-              <p>Calendar estimate only; cycle day is counted from your recorded start date.</p>
+              <p>{language === "hi" ? "यह केवल कैलेंडर अनुमान है; चक्र का दिन आपकी दर्ज शुरुआत से गिना जाता है।" : "Calendar estimate only; cycle day is counted from your recorded start date."}</p>
             </div>
           )}
           <button
@@ -1005,15 +1060,15 @@ function Dashboard({ discreetMode }) {
             className="secondary-button dashboard-calendar-link"
             onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }))}
           >
-            {cycleEstimate?.needsReview ? "Review dates" : "View calendar"}
+            {cycleEstimate?.needsReview ? t("reviewDates") : t("viewCalendar")}
           </button>
         </section>
       )}
 
       <section className="personal-insight-card">
-        <span className="eyebrow">A PERSONAL RECORD PATTERN</span>
+        <span className="eyebrow">{t("personalPattern")}</span>
         {discreetMode ? (
-          <p>Personal details are hidden while Discreet Mode is on.</p>
+          <p>{t("hiddenWhileDiscreet")}</p>
         ) : (() => {
           const patterns = getCrossCyclePatterns(entries, getSymptomEntries());
           return patterns.length ? (
@@ -1038,7 +1093,7 @@ function Dashboard({ discreetMode }) {
             )
           }
         >
-          Log today
+          {t("logToday")}
         </button>
       </section>
 
@@ -1048,24 +1103,25 @@ function Dashboard({ discreetMode }) {
         localDateString={localDateString}
         Illustration={RefreshmentIllustration}
         refreshmentItems={selfCareRefreshments}
+        language={language}
       />
 
       <section className="pregnancy-info-teaser">
         <div>
-          <span className="eyebrow">OPTIONAL INFORMATION</span>
-          <h2>Pregnancy &amp; baby information</h2>
-          <p>Find pregnancy guidance and links about baby movements. This section is optional and does not confirm pregnancy.</p>
+          <span className="eyebrow">{t("optionalInfo")}</span>
+          <h2>{t("pregnancyInfo")}</h2>
+          <p>{language === "hi" ? "गर्भावस्था और शिशु की गतिविधियों के बारे में जानकारी देखें। यह वैकल्पिक है और गर्भावस्था की पुष्टि नहीं करता।" : "Find pregnancy guidance and links about baby movements. This section is optional and does not confirm pregnancy."}</p>
         </div>
         <button className="secondary-button" onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "Pregnancy" }))}>
-          View information <ChevronRight size={16} />
+          {t("viewInformation")} <ChevronRight size={16} />
         </button>
       </section>
       <section className="bottom-grid">
         <article className="action-card">
           <div className="action-card-heading">
             <div>
-              <span className="eyebrow">A MOMENT FOR YOU</span>
-              <h2>Let's check in</h2>
+              <span className="eyebrow">{t("momentForYou")}</span>
+              <h2>{t("checkIn")}</h2>
             </div>
 
             <div className="action-icon">
@@ -1074,8 +1130,7 @@ function Dashboard({ discreetMode }) {
           </div>
 
           <p>
-            Record your period to start building your personal
-            cycle history.
+            {t("recordPeriodHistory")}
           </p>
 
           <button
@@ -1086,14 +1141,12 @@ function Dashboard({ discreetMode }) {
             }}
           >
             <Plus size={18} />
-            Log your period
+            {t("logYourPeriod")}
           </button>
 
           {showLogForm && (
             <form className="log-form" onSubmit={handleLogPeriod}>
-              <label htmlFor="period-start">
-                First day of your period
-              </label>
+              <label htmlFor="period-start">{t("firstPeriodDay")}</label>
 
               <input
                 id="period-start"
@@ -1104,7 +1157,7 @@ function Dashboard({ discreetMode }) {
                 required
               />
 
-              <label htmlFor="period-length">Period duration</label>
+              <label htmlFor="period-length">{t("periodDuration")}</label>
 
               <AnimatedSelect
                 id="period-length"
@@ -1114,34 +1167,34 @@ function Dashboard({ discreetMode }) {
                 {Array.from({ length: 10 }, (_, index) => index + 1).map(
                   (day) => (
                     <option key={day} value={day}>
-                      {day} {day === 1 ? "day" : "days"}
+                      {day} {day === 1 ? t("day") : t("days")}
                     </option>
                   )
                 )}
               </AnimatedSelect>
 
-              <label htmlFor="period-flow">Flow intensity</label>
+              <label htmlFor="period-flow">{t("flowIntensity")}</label>
               <AnimatedSelect
                 id="period-flow"
                 value={flow}
                 onChange={(event) => setFlow(event.target.value)}
               >
-                <option value="spotting">Spotting</option>
-                <option value="light">Light</option>
-                <option value="medium">Medium</option>
-                <option value="heavy">Heavy</option>
+                <option value="spotting">{t("spotting")}</option>
+                <option value="light">{t("light")}</option>
+                <option value="medium">{t("medium")}</option>
+                <option value="heavy">{t("heavy")}</option>
               </AnimatedSelect>
 
               {flow === "heavy" && (
                 <fieldset className="heavy-flow-questions">
-                  <legend>Optional heavy-flow check-in</legend>
+                  <legend>{t("optionalHeavyFlow")}</legend>
                   <label>
                     <input
                       type="checkbox"
                       checked={changesEveryHour}
                       onChange={(event) => setChangesEveryHour(event.target.checked)}
                     />
-                    I needed to change a pad every 1–2 hours
+                    {t("padChanges")}
                   </label>
                   <label>
                     <input
@@ -1149,17 +1202,16 @@ function Dashboard({ discreetMode }) {
                       checked={largeClots}
                       onChange={(event) => setLargeClots(event.target.checked)}
                     />
-                    I noticed clots larger than a ₹10 coin
+                    {t("largeClots")}
                   </label>
                   <p>
-                    These are personal observations, not a diagnosis. You can
-                    discuss them with a healthcare professional.
+                    {t("observationsNotDiagnosis")}
                   </p>
                 </fieldset>
               )}
 
               <button className="primary-button" type="submit">
-                Save entry
+                {t("saveEntry")}
               </button>
             </form>
           )}
@@ -1176,14 +1228,12 @@ function Dashboard({ discreetMode }) {
             <Sparkles size={21} />
           </div>
 
-          <span className="eyebrow">A GENTLE REMINDER</span>
+          <span className="eyebrow">{t("careReminder")}</span>
 
-          <h2>Your body deserves kindness.</h2>
+          <h2>{t("bodyKindness")}</h2>
 
           <p>
-            Cycles can vary from person to person and from month to
-            month. Your records help you notice patterns; they are
-            not a diagnosis.
+            {t("cyclesVary")}
           </p>
 
           <button
@@ -1196,15 +1246,15 @@ function Dashboard({ discreetMode }) {
               )
             }
           >
-            Explore wellness tips <ChevronRight size={17} />
+            {language === "hi" ? "स्वास्थ्य सुझाव देखें" : "Explore wellness tips"} <ChevronRight size={17} />
           </button>
         </article>
       </section>
 
       <footer className="dashboard-footer">
         <Heart size={14} />
-        <span>Made with care, just for you.</span>
-        <span className="footer-note">Estimates are not medical advice.</span>
+        <span>{language === "hi" ? "आपके लिए, देखभाल के साथ।" : "Made with care, just for you."}</span>
+        <span className="footer-note">{language === "hi" ? "अनुमान चिकित्सा सलाह नहीं हैं।" : "Estimates are not medical advice."}</span>
       </footer>
     </>
   );
@@ -3231,6 +3281,8 @@ function SettingsPage({
     document.documentElement.classList.toggle("high-contrast", highContrast);
   }, [textSize, highContrast]);
 
+  const t = (key) => translate(language, key);
+
   function exportData() {
     try {
       const data = {
@@ -3395,11 +3447,11 @@ function SettingsPage({
 
   return (
     <section className="page-card settings-page">
-      <span className="eyebrow">YOUR DATA, YOUR CHOICE</span>
-      <h2>Settings & Privacy</h2>
+      <span className="eyebrow">{t("settingsEyebrow")}</span>
+      <h2>{t("settingsTitle")}</h2>
 
       <p className="page-description">
-        Manage the records stored in this browser.
+        {t("settingsDescription")}
       </p>
 
       <div className="settings-row">
@@ -3451,10 +3503,10 @@ function SettingsPage({
       </section>
 
       <section className="settings-preferences">
-        <span className="eyebrow">ACCESSIBILITY & PERSONALIZATION</span>
-        <h3>App preferences</h3>
-        <label className="field-label">Device preview</label>
-        <div className="device-switcher settings-device-switcher" role="group" aria-label="Device preview">
+        <span className="eyebrow">{t("accessibilityPersonalization")}</span>
+        <h3>{t("appPreferences")}</h3>
+        <label className="field-label">{t("devicePreview")}</label>
+        <div className="device-switcher settings-device-switcher" role="group" aria-label={t("devicePreview")}>
           <button
             type="button"
             className={devicePreview === "desktop" ? "device-switch-active" : ""}
@@ -3462,7 +3514,7 @@ function SettingsPage({
             onClick={() => onDevicePreviewChange("desktop")}
           >
             <Laptop size={17} />
-            <span>Desktop</span>
+            <span>{t("desktop")}</span>
           </button>
           <button
             type="button"
@@ -3471,18 +3523,18 @@ function SettingsPage({
             onClick={() => onDevicePreviewChange("mobile")}
           >
             <Smartphone size={17} />
-            <span>Mobile</span>
+            <span>{t("mobile")}</span>
           </button>
         </div>
-        <p className="privacy-hint">Preview how CycleCare pages arrange on desktop or mobile.</p>
-        <label className="field-label" htmlFor="app-language">Language</label>
+        <p className="privacy-hint">{t("devicePreviewHint")}</p>
+        <label className="field-label" htmlFor="app-language">{t("language")}</label>
         <AnimatedSelect id="app-language" value={language} onChange={(event) => onLanguageChange(event.target.value)}>
           <option value="en">English</option>
           <option value="hi">हिंदी</option>
         </AnimatedSelect>
-        <p className="privacy-hint">Hindi is available for essential Learn lessons, onboarding, selected guidance and FAQ content. Some screens and supplementary Learn articles remain English-only.</p>
+        <p className="privacy-hint">{t("languageCoverage")}</p>
 
-        <label className="field-label" htmlFor="speech-voice">Reading voice</label>
+        <label className="field-label" htmlFor="speech-voice">{t("readingVoice")}</label>
         <select
           id="speech-voice"
           value={speechVoiceURI}
@@ -3492,8 +3544,8 @@ function SettingsPage({
           }}
           disabled={!speechVoices.length}
         >
-          <option value="auto-feminine">Soft feminine voice (automatic)</option>
-          <option value="">System default</option>
+          <option value="auto-feminine">{t("automaticVoice")}</option>
+          <option value="">{t("systemDefault")}</option>
           {speechVoices.map((voice) => (
             <option value={voice.voiceURI} key={voice.voiceURI}>
               {voice.name} ({voice.lang})
@@ -3504,15 +3556,15 @@ function SettingsPage({
           The automatic option prefers a soft feminine voice in Hindi or English when your browser provides one. This also applies to Listen in Learn.
         </p>
 
-        <label className="field-label" htmlFor="age-group">Age group for cycle guidance</label>
+        <label className="field-label" htmlFor="age-group">{t("ageGroup")}</label>
         <AnimatedSelect id="age-group" value={ageGroup} onChange={(event) => {
           handleAgeGroupChange(event.target.value);
         }}>
-          <option value="under18">Under 18</option>
-          <option value="adult">18 and over</option>
-          <option value="prefer-not">Prefer not to say (adult guidance)</option>
+          <option value="under18">{t("under18")}</option>
+          <option value="adult">{t("adult")}</option>
+          <option value="prefer-not">{t("preferNot")}</option>
         </AnimatedSelect>
-        <p className="privacy-hint">This only changes the general cycle range used for prompts. It cannot assess personal health or determine age-specific care needs.</p>
+        <p className="privacy-hint">{t("ageGroupHint")}</p>
         {ageGroup === "under18" && (
           <label className="check-field">
             <input
@@ -3520,7 +3572,7 @@ function SettingsPage({
               checked={pregnancyVisible}
               onChange={(event) => onPregnancyVisibilityChange(event.target.checked)}
             />
-            Show pregnancy information in navigation
+            {t("showPregnancyInfo")}
           </label>
         )}
         <label className="check-field">
@@ -3532,22 +3584,22 @@ function SettingsPage({
               setHealthItem("cyclecare_fertility_info_visible", String(event.target.checked));
             }}
           />
-          Show ovulation and fertile-window estimates
+          {t("showFertilityEstimates")}
         </label>
 
-        <label className="field-label" htmlFor="text-size">Text size</label>
+        <label className="field-label" htmlFor="text-size">{t("textSize")}</label>
         <AnimatedSelect id="text-size" value={textSize} onChange={(event) => {
           setTextSize(event.target.value);
           localStorage.setItem("cyclecare_text_size", event.target.value);
         }}>
-          <option value="small">Small</option>
-          <option value="default">Default</option>
-          <option value="large">Large</option>
+          <option value="small">{t("small")}</option>
+          <option value="default">{t("default")}</option>
+          <option value="large">{t("large")}</option>
         </AnimatedSelect>
         <label className="check-field"><input type="checkbox" checked={highContrast} onChange={(event) => {
           setHighContrast(event.target.checked);
           localStorage.setItem("cyclecare_high_contrast", String(event.target.checked));
-        }} /> High contrast</label>
+        }} /> {t("highContrast")}</label>
         <button className="secondary-button read-aloud-button" onClick={() => {
           if (!("speechSynthesis" in window)) {
             setMessage("Read aloud is not available in this browser.");
@@ -3558,8 +3610,8 @@ function SettingsPage({
           applyPreferredSpeechVoice(speech);
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(speech);
-        }}>Read this screen aloud</button>
-        <h4>Symptoms to include in tracking</h4>
+        }}>{t("readThisScreen")}</button>
+        <h4>{t("trackedSymptomsHeading")}</h4>
         <div className="settings-symptoms">
           {availableSymptoms.map((symptom) => (
             <label className="check-field" key={symptom}>
