@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Heart,
   LayoutDashboard,
@@ -37,15 +37,18 @@ import {
   Minimize2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import { CareGuidancePage } from "./pages/CareGuidancePage";
+import { InsightsPage } from "./pages/InsightsPage";
 import {
   addDays,
   daysBetween,
   getCycleEstimate,
-  hasOverlappingPeriods,
   localDateStringForDate,
   parseDateOnly,
 } from "./utils/cycle";
+import { getCrossCyclePatterns } from "./utils/insights";
 import { validateImportData } from "./utils/importData";
+import { upsertPeriodRecord, upsertSymptomRecord } from "./utils/trackingRecords";
 import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
 import { AssistantMarkdown } from "./components/AssistantMarkdown";
@@ -518,15 +521,28 @@ function App() {
           <CalendarPage />
         ) : activePage === "My Symptoms" ? (
           <SymptomsPage
+            key={symptomEditRecord?.id || "new"}
             editRecord={symptomEditRecord}
             onEditComplete={() => setSymptomEditRecord(null)}
           />
         ) : activePage === "Learn" ? (
           <LearnPage key={language} language={language} />
         ) : activePage === "When to see a doctor" ? (
-          <CareGuidancePage />
+          <CareGuidancePage
+            entries={getPeriodEntries()}
+            symptoms={getSymptomEntries()}
+            getCareGuidance={getCareGuidance}
+            formatDate={formatDate}
+            localDateString={localDateString}
+            sortSymptomRecords={sortSymptomRecords}
+          />
         ) : activePage === "Insights" ? (
-          <InsightsPage />
+          <InsightsPage
+            periods={getPeriodEntries()}
+            symptoms={getSymptomEntries()}
+            formatDate={formatDate}
+            daysBetween={daysBetween}
+          />
         ) : activePage === "Offline answers" ? (
           <AskPage language={language} />
         ) : activePage === "Reminders" ? (
@@ -753,24 +769,19 @@ function Dashboard({ discreetMode }) {
       setMessage("This period start date is already recorded.");
       return;
     }
-    if (hasOverlappingPeriods([
-      ...entries,
-      { startDate: periodStart, periodLength: Number(periodLength) },
-    ])) {
-      setMessage("These dates overlap another recorded period. Review your period history first.");
-      return;
-    }
-
-    const updatedEntries = [
-      ...entries,
-      {
+    let updatedEntries;
+    try {
+      updatedEntries = upsertPeriodRecord(entries, {
         startDate: periodStart,
         periodLength: Number(periodLength),
         flow,
         changesEveryHour,
         largeClots,
-      },
-    ].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      }, { today: localDateString() });
+    } catch (error) {
+      setMessage(error.message);
+      return;
+    }
 
     setHealthItem(
       "cyclecare_periods",
@@ -1486,20 +1497,26 @@ function CalendarPage() {
                 setCalendarMessage("The recorded period must be between 1 and 10 days.");
                 return;
               }
-              const periodStart = selectedPeriodStart || selectedDate;
               const editingEntry = entries.find((entry) => entry.startDate === selectedDate);
-              const updated = entries.filter((entry) => entry.startDate !== selectedDate);
-              if (selectedIsPeriod) updated.push({
-                ...(editingEntry || {}),
-                startDate: periodStart,
-                periodLength,
-                flow: selectedFlow,
-              });
-              if (hasOverlappingPeriods(updated)) {
-                setCalendarMessage("These dates overlap another recorded period. Review the existing dates first.");
-                return;
+              let updated;
+              if (selectedIsPeriod) {
+                try {
+                  updated = upsertPeriodRecord(entries, {
+                    ...(editingEntry || {}),
+                    startDate: selectedPeriodStart || selectedDate,
+                    periodLength,
+                    flow: selectedFlow,
+                  }, {
+                    today: localDateString(),
+                    replacingStartDate: selectedDate,
+                  });
+                } catch (error) {
+                  setCalendarMessage(error.message);
+                  return;
+                }
+              } else {
+                updated = entries.filter((entry) => entry.startDate !== selectedDate);
               }
-              updated.sort((first, second) => first.startDate.localeCompare(second.startDate));
               setHealthItem("cyclecare_periods", JSON.stringify(updated));
               window.dispatchEvent(new Event("cyclecare-data-updated"));
               setCalendarMessage("Calendar record saved.");
@@ -1682,309 +1699,7 @@ function CalendarPage() {
 
 /* -------------------- CARE GUIDANCE -------------------- */
 
-function CareGuidancePage() {
-  const entries = getPeriodEntries();
-  const symptoms = getSymptomEntries();
-  const guidance = getCareGuidance(entries, symptoms);
-  const [showPrintSummary, setShowPrintSummary] = useState(false);
 
-  return (
-    <section className="page-card care-guidance">
-      <span className="eyebrow">SUPPORT FOR YOUR NEXT STEP</span>
-      <h2>When to see a doctor</h2>
-      <p className="page-description">
-        This page checks only the period dates and lengths you have recorded.
-        It cannot assess symptoms you have not logged, diagnose a condition,
-        or tell you that a warning sign is safe to ignore.
-      </p>
-
-      <section className="care-guidance-category" aria-labelledby="self-care-heading">
-        <h3 id="self-care-heading">General self-care</h3>
-        <article className="care-guidance-card">
-          <p>
-            For familiar, mild cramps, some people find a warm bath or a wrapped
-            heat pad, gentle movement, rest, and keeping hydrated comforting.
-            Stop anything that makes you feel worse. These are comfort ideas,
-            not treatments; do not start or stop medication based on this app.
-          </p>
-          <a href="https://www.nhs.uk/symptoms/period-pain/" target="_blank" rel="noreferrer">
-            Source: NHS, Period pain <ExternalLink size={14} />
-          </a>
-        </article>
-      </section>
-
-      <section className="care-guidance-category" aria-labelledby="medical-advice-heading">
-        <h3 id="medical-advice-heading">Arrange medical advice</h3>
-        <article className="care-guidance-card">
-          <h4>Bleeding or period changes</h4>
-          <p>
-            Talk with a qualified healthcare professional if bleeding lasts
-            longer than 7 days, repeatedly requires changing a pad or tampon
-            every 1–2 hours, includes large clots, disrupts daily life, or
-            bleeding happens between periods or after sex. Repeatedly short,
-            long, or changing cycles also deserve discussion.
-          </p>
-          <p>
-            If you miss 3 periods in a row or go about 90 days without one,
-            seek professional advice. If pregnancy is possible, consider a
-            pregnancy test and follow its instructions. A missed period has
-            many possible causes and is not a diagnosis.
-          </p>
-          <div className="care-guidance-sources">
-            <a href="https://www.nhs.uk/conditions/heavy-periods/" target="_blank" rel="noreferrer">
-              Source: NHS, Heavy periods <ExternalLink size={14} />
-            </a>
-            <a href="https://www.nhs.uk/symptoms/irregular-periods/" target="_blank" rel="noreferrer">
-              Source: NHS, Irregular periods <ExternalLink size={14} />
-            </a>
-            <a href="https://www.nhs.uk/symptoms/missed-or-late-periods/" target="_blank" rel="noreferrer">
-              Source: NHS, Missed or late periods <ExternalLink size={14} />
-            </a>
-          </div>
-        </article>
-        <article className="care-guidance-card">
-          <h4>Pain or other symptoms</h4>
-          <p>
-            Seek medical advice if period pain is severe, worsening, new for
-            you, or stops usual activities. Also ask for advice if symptoms
-            worry you, even if they are not listed here. Cycle records cannot
-            diagnose PCOS, endometriosis, or another condition.
-          </p>
-          <a href="https://www.nhs.uk/symptoms/period-pain/" target="_blank" rel="noreferrer">
-            Source: NHS, Period pain <ExternalLink size={14} />
-          </a>
-        </article>
-        {guidance.length ? (
-          <div className="care-guidance-list">
-            {guidance.map((item) => (
-              <article className="care-guidance-card" key={item.id}>
-                <h4>{item.title}</h4>
-                <p>{item.observed}</p>
-                <p>{item.why}</p>
-                <p>{item.nextStep}</p>
-                <a href={item.source.url} target="_blank" rel="noreferrer">
-                  Source: {item.source.name} <ExternalLink size={14} />
-                </a>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <article className="care-guidance-card">
-            <h4>No date-based prompts from your current records</h4>
-            <p>
-              This is not a medical assessment. Records may be incomplete, and
-              the app cannot check symptoms you have not logged.
-            </p>
-          </article>
-        )}
-        <article className="care-guidance-card">
-          <h4>Information this app cannot check</h4>
-          <p>
-            Speak with a healthcare professional if you have not had a first
-            period by age 15, your periods suddenly change after years of being
-            regular, or you have bleeding after menopause.
-          </p>
-          <a href="https://www.nhs.uk/symptoms/missed-or-late-periods/" target="_blank" rel="noreferrer">
-            Source: NHS, Missed or late periods <ExternalLink size={14} />
-          </a>
-        </article>
-        <article className="care-guidance-card">
-          <h4>Ways to seek care</h4>
-          <p>
-            Consider a nearby government health centre, a qualified
-            gynaecologist, or a tele-consultation service. Availability and
-            eligibility can vary by location.
-          </p>
-          <a href="https://esanjeevani.mohfw.gov.in/" target="_blank" rel="noreferrer">
-            Government of India eSanjeevani tele-consultation
-            <ExternalLink size={14} />
-          </a>
-        </article>
-      </section>
-
-      <section className="care-guidance-category" aria-labelledby="urgent-care-heading">
-        <h3 id="urgent-care-heading">Urgent symptoms—get help now</h3>
-        <div className="care-urgent-note">
-        <h3>Get urgent medical help</h3>
-        <p>
-          Seek urgent medical assessment for sudden or severe lower-belly pain;
-          very heavy bleeding with dizziness, fainting, or feeling very unwell;
-          or severe pain or bleeding when pregnancy is possible. Contact your
-          local emergency service or go to an emergency department. In India,
-          call 112.
-        </p>
-        <p>
-          CycleCare does not monitor emergencies. Do not wait for an app
-          estimate or a logged pattern if you have a concerning symptom.
-        </p>
-        <div className="care-guidance-sources">
-          <a
-            href="https://www.nhs.uk/symptoms/period-pain/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Period pain <ExternalLink size={14} />
-          </a>
-          <a
-            href="https://www.nhs.uk/conditions/ectopic-pregnancy/symptoms/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Ectopic pregnancy symptoms <ExternalLink size={14} />
-          </a>
-          <a
-            href="https://www.nhs.uk/conditions/heavy-periods/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Heavy periods <ExternalLink size={14} />
-          </a>
-          <a href="https://112.gov.in/" target="_blank" rel="noreferrer">
-            India Emergency Response Support System (112) <ExternalLink size={14} />
-          </a>
-        </div>
-        </div>
-      </section>
-      <button
-        className="secondary-button print-summary-button"
-        onClick={() => {
-          setShowPrintSummary(true);
-          window.setTimeout(() => window.print(), 150);
-        }}
-      >
-        Prepare / print a visit summary
-      </button>
-      {showPrintSummary && (
-        <section className="print-summary">
-          <h2>CycleCare visit summary</h2>
-          <p>Personal record only. Not a diagnosis. Prepared {formatDate(localDateString())}.</p>
-          <h3>Recorded periods</h3>
-          <ul>{entries.slice(-12).reverse().map((entry) => (
-            <li key={entry.startDate}>
-              {formatDate(entry.startDate)} — {entry.periodLength} days, {entry.flow} flow
-              {entry.changesEveryHour ? ", changed pad every 1–2 hours" : ""}
-              {entry.largeClots ? ", recorded large clots" : ""}
-            </li>
-          ))}</ul>
-          <h3>Recent symptom check-ins</h3>
-          <ul>{sortSymptomRecords(symptoms).slice(0, 12).map((record) => (
-            <li key={record.id}>
-              {formatDate(record.date)} — {record.symptoms.join(", ") || "No symptoms selected"}; pain {record.pain}/10
-              {record.painStopsActivities ? ", affected usual activities" : ""}
-              {record.medicines ? `; medicines: ${record.medicines}` : ""}
-            </li>
-          ))}</ul>
-          <h3>Questions for my healthcare professional</h3>
-          <ul><li>What could be causing the changes I recorded?</li><li>What should I monitor or do next?</li><li>When should I seek urgent care?</li></ul>
-        </section>
-      )}
-      <p className="clinical-review-note">
-        Health guidance is based on the linked public sources and has not yet
-        been reviewed by a qualified clinician. It is general education, not
-        diagnosis or a substitute for individual medical care.
-      </p>
-    </section>
-  );
-}
-
-function InsightsPage() {
-  const periods = getPeriodEntries();
-  const symptoms = getSymptomEntries();
-  const cycles = periods.slice(1).map((entry, index) => ({
-    start: periods[index].startDate,
-    end: entry.startDate,
-    days: daysBetween(periods[index].startDate, entry.startDate),
-    periodDays: periods[index].periodLength,
-  }));
-  const cycleLengths = cycles.map((cycle) => cycle.days);
-  const mean = cycleLengths.length
-    ? Math.round(cycleLengths.reduce((sum, value) => sum + value, 0) / cycleLengths.length)
-    : null;
-  const minimum = cycleLengths.length ? Math.min(...cycleLengths) : null;
-  const maximum = cycleLengths.length ? Math.max(...cycleLengths) : null;
-  const recentLengths = cycleLengths.slice(-6);
-  const recentSpread = recentLengths.length
-    ? Math.max(...recentLengths) - Math.min(...recentLengths)
-    : null;
-  const patterns = getCrossCyclePatterns(periods, symptoms);
-
-  return (
-    <section className="page-card">
-      <span className="eyebrow">YOUR RECORDS, GENTLY SUMMARIZED</span>
-      <h2>Cycle insights</h2>
-      <p className="page-description">
-        These are summaries of what you recorded, not medical findings or
-        predictions. Missing logs can change the picture.
-      </p>
-      <details className="insight-example">
-        <summary>See an example of how this works</summary>
-        <div className="insight-example-content">
-          <p><strong>Sample period starts:</strong> 1 Apr, 29 Apr, 27 May, 23 Jun</p>
-          <p>Days between starts: <strong>28, 28, and 27</strong></p>
-          <p><strong>Example result:</strong> average cycle 28 days; recorded range 27–28 days.</p>
-          <p>If “cramps” was logged once in each of those three cycles, the pattern would read: <strong>Cramps — recorded in 3 of 3 cycles.</strong></p>
-          <small>Sample data only. This does not change your saved records.</small>
-        </div>
-      </details>
-      {cycles.length ? (
-        <>
-          <div className="symptom-stat-grid cycle-summary-grid">
-            <article className="symptom-stat-card"><span>AVERAGE RECORDED CYCLE</span><strong>{mean} days</strong></article>
-            <article className="symptom-stat-card purple-stat"><span>RECORDED RANGE</span><strong>{minimum}–{maximum} days</strong></article>
-          </div>
-          {recentSpread !== null && (
-            <p className="privacy-hint">
-              Tracking label: {recentLengths.length < 2
-                ? "not enough recent cycles to describe variation"
-                : recentSpread > 7
-                  ? "recent cycle lengths vary by more than 7 days (irregular tracking pattern)"
-                  : "recent cycle lengths vary by 7 days or less"}.
-              This is a simple summary, not a clinical assessment.
-            </p>
-          )}
-          <div className="cycle-history-heading">
-            <h3>Recorded cycle history</h3>
-            <span>{cycles.length} completed {cycles.length === 1 ? "cycle" : "cycles"}</span>
-          </div>
-          <p className="cycle-history-explanation">
-            Each bar shows the days from one recorded period start to the next. The average and range use all recorded intervals; the tracking label above checks the six most recent.
-          </p>
-          <div className="cycle-history-chart" aria-label="Recorded cycle lengths">
-            {cycles.slice(-12).map((cycle) => (
-              <div className="cycle-chart-row" key={cycle.end}>
-                <span>{formatDate(cycle.start)}</span>
-                <div className="cycle-chart-track" role="progressbar" aria-label={`${cycle.days} days from this period start to the next`} aria-valuemin={0} aria-valuemax={maximum} aria-valuenow={cycle.days}>
-                  <span className="cycle-chart-bar" style={{ width: `${Math.min(100, Math.max(8, (cycle.days / Math.max(maximum, 1)) * 100))}%` }} />
-                </div>
-                <strong>{cycle.days} d</strong>
-                <small>{cycle.periodDays} period days</small>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="insight-empty-state">
-          <h3>Cycle history will appear here</h3>
-          <p>Record at least two period start dates to see the days between them. Three starts are needed before the app can estimate your next period.</p>
-        </div>
-      )}
-      <section className="history-section">
-        <h3>Patterns across cycles</h3>
-        {patterns.length ? patterns.map((pattern) => (
-          <article className="care-guidance-card" key={pattern.symptom}>
-            <h4>{pattern.symptom}</h4>
-            <p>Recorded in {pattern.cycleCount} of your last {pattern.cyclesChecked} logged cycles. This is a record of co-occurrence, not evidence of a cause.</p>
-          </article>
-        )) : (
-          <p className="page-description">
-            Patterns appear after the same symptom has been recorded in at
-            least three separate logged cycles.
-          </p>
-        )}
-      </section>
-    </section>
-  );
-}
 
 const frequentlyAskedQuestions = [
   { q: "What counts as day one?", hi: "पहला दिन किसे माना जाता है?", a: "Cycle day 1 is the first day bleeding starts. Record the date as a local calendar date.", ahi: "चक्र का पहला दिन वह है जिस दिन रक्तस्राव शुरू होता है। तारीख को स्थानीय कैलेंडर की तारीख के रूप में लिखें।", k: "day one first day cycle day", url: "https://www.nhs.uk/symptoms/irregular-periods/" },
@@ -2091,23 +1806,7 @@ function FloatingAssistant() {
   const inputRef = useRef(null);
   const transcriptRef = useRef(null);
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    inputRef.current?.focus();
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") closeAssistant();
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen, aiConsent]);
-
-  useEffect(() => () => {
-    window.clearTimeout(closeTimer.current);
-    window.clearTimeout(openingTimer.current);
-    window.clearTimeout(fullscreenTimer.current);
-  }, []);
-
-  function closeAssistant() {
+  const closeAssistant = useCallback(() => {
     if (isClosing) return;
     window.clearTimeout(openingTimer.current);
     setIsOpening(false);
@@ -2120,7 +1819,23 @@ function FloatingAssistant() {
       setFullscreenMotion("");
       window.requestAnimationFrame(() => launcherRef.current?.focus());
     }, 220);
-  }
+  }, [isClosing]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    inputRef.current?.focus();
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") closeAssistant();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isOpen, closeAssistant]);
+
+  useEffect(() => () => {
+    window.clearTimeout(closeTimer.current);
+    window.clearTimeout(openingTimer.current);
+    window.clearTimeout(fullscreenTimer.current);
+  }, []);
 
   function openAssistant() {
     window.clearTimeout(closeTimer.current);
@@ -2755,26 +2470,6 @@ function SymptomsPage({ editRecord, onEditComplete }) {
   const painBand = Number(pain) === 0 ? "none" : Number(pain) <= 3 ? "mild" : Number(pain) <= 6 ? "moderate" : "severe";
 
   useEffect(() => {
-    if (!editRecord) return;
-    setSelectedSymptoms(editRecord.symptoms || []);
-    setEntryDate(editRecord.date || localDateString());
-    setNote(editRecord.note || "");
-    setFlow(editRecord.flow || "");
-    setPain(editRecord.pain || 0);
-    setPainStopsActivities(editRecord.painStopsActivities || false);
-    setBleedingBetweenPeriods(editRecord.bleedingBetweenPeriods || false);
-    setSuddenSevereLowerPain(editRecord.suddenSevereLowerPain || false);
-    setVeryHeavyWithFaintness(editRecord.veryHeavyWithFaintness || false);
-    setPregnancyPossibleWithSymptoms(editRecord.pregnancyPossibleWithSymptoms || false);
-    setMood(editRecord.mood || "okay");
-    setEnergy(editRecord.energy || "usual");
-    setSleepHours(editRecord.sleepHours == null ? "" : String(editRecord.sleepHours));
-    setMedicines(editRecord.medicines || "");
-    setSelfHarmConcern(editRecord.selfHarmConcern || false);
-    setMessage(`Editing check-in from ${formatDate(editRecord.date)}.`);
-  }, [editRecord?.id]);
-
-  useEffect(() => {
     const refreshRecords = () => setRecords(getSymptomEntries());
     const handleStorageChange = (event) => {
       if (event.key === "cyclecare_symptoms") refreshRecords();
@@ -2826,9 +2521,16 @@ function SymptomsPage({ editRecord, onEditComplete }) {
       medicines,
       selfHarmConcern,
     };
-    const updatedRecords = editRecord
-      ? records.map((record) => record.id === editRecord.id ? savedRecord : record)
-      : [...records, savedRecord];
+    let updatedRecords;
+    try {
+      updatedRecords = upsertSymptomRecord(records, savedRecord, {
+        today: localDateString(),
+        editingId: editRecord?.id,
+      });
+    } catch (error) {
+      setMessage(error.message);
+      return;
+    }
 
     setHealthItem(
       "cyclecare_symptoms",
@@ -4121,16 +3823,6 @@ function createDemoData() {
   return { periods, symptoms, logs: symptoms };
 }
 
-function getCyclePhase(cycleDay, periodLength) {
-  if (!Number.isFinite(cycleDay) || cycleDay < 1) {
-    return "Log a period start date to calculate a cycle day.";
-  }
-  if (cycleDay <= periodLength) {
-    return "This date falls within the period duration you recorded.";
-  }
-  return "This date is after the recorded period. The app cannot determine your biological cycle phase.";
-}
-
 function getReminders() {
   try {
     const stored = JSON.parse(getHealthItem("cyclecare_reminders") || "[]");
@@ -4175,34 +3867,6 @@ function hasThreeConsecutiveLowMoodDays(records) {
     daysBetween(recentDays[0][0], recentDays[1][0]) === 1 &&
     daysBetween(recentDays[1][0], recentDays[2][0]) === 1
   );
-}
-
-function getCrossCyclePatterns(periods, symptoms) {
-  if (periods.length < 4) return [];
-  const cycleSets = new Map();
-  const cycles = periods.slice(0, -1).map((period, index) => ({
-    start: period.startDate,
-    end: periods[index + 1].startDate,
-  }));
-  const recentCycles = cycles.slice(-6);
-  symptoms.forEach((record) => {
-    const cycleIndex = recentCycles.findIndex(
-      (cycle) => record.date >= cycle.start && record.date < cycle.end
-    );
-    if (cycleIndex < 0) return;
-    new Set(record.symptoms).forEach((symptom) => {
-      if (!cycleSets.has(symptom)) cycleSets.set(symptom, new Set());
-      cycleSets.get(symptom).add(cycleIndex);
-    });
-  });
-  return [...cycleSets.entries()]
-    .filter(([, cyclesWithSymptom]) => cyclesWithSymptom.size >= 3)
-    .map(([symptom, cyclesWithSymptom]) => ({
-      symptom,
-      cycleCount: cyclesWithSymptom.size,
-      cyclesChecked: recentCycles.length,
-    }))
-    .sort((first, second) => second.cycleCount - first.cycleCount);
 }
 
 function getPeriodEntries() {

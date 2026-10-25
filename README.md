@@ -45,14 +45,17 @@ wait for CycleCare.
 - Oxlint
 - Node's built-in test runner for cycle/date calculation tests
 
-`src/main.jsx` mounts `App` from `src/App.jsx`. The main app currently contains
-the shell, pages, persistence operations, and content; reusable date and cycle
-estimate functions are in `src/utils/cycle.js`, with tests in
-`src/utils/cycle.test.js`. Learning content is also maintained in
-`src/content/healthLessons.js`. Styling is in `src/App.css` and `src/index.css`.
-Navigation is component-state based; there is no configured router. The
-optional Gemini assistant uses a separate Express backend in `server/`; core
-CycleCare functionality does not require it.
+`src/main.jsx` mounts `App` from `src/App.jsx`. The app shell and most page
+components remain in `App.jsx`; the care-guidance and cycle-insights pages are
+in `src/pages/CareGuidancePage.jsx` and `src/pages/InsightsPage.jsx`.
+Reusable date and estimate calculations are in `src/utils/cycle.js`,
+cross-cycle summaries in `src/utils/insights.js`, and validated
+period/check-in writes in `src/utils/trackingRecords.js`. These utilities and
+their workflows are covered by Node's built-in test runner.
+Learning content is maintained in `src/content/healthLessons.js`. Styling is
+in `src/App.css` and `src/index.css`. Navigation is component-state based;
+there is no configured router. The optional Gemini assistant uses a separate
+Express backend in `server/`; core CycleCare functionality does not require it.
 
 `react-router-dom` and `recharts` are installed but not used by the current
 application.
@@ -87,7 +90,7 @@ backend/provider when the optional assistant is used.
 Use a current Node.js version supported by Vite 8.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -105,7 +108,7 @@ Then run:
 
 ```bash
 cd server
-npm install
+npm ci
 npm run dev
 ```
 
@@ -178,6 +181,12 @@ npm run lint
 npm run build
 npm run preview
 ```
+
+The root test suite covers date and prediction calculations, period
+create/edit workflows, symptom create/edit and cycle summaries, import
+validation, encrypted vault operations, assistant consent and safety rules, and
+backend route behavior. These automated checks do not replace browser,
+accessibility, clinician, or production-provider testing.
 
 The Vite build uses the site root by default. Configure `base` before deploying
 under a subpath.
