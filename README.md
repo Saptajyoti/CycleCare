@@ -8,9 +8,9 @@ profile; the app does not send them to a CycleCare server.
 ## Features
 
 - Period start and duration logging, flow observations, and an editable calendar.
-- A clearly labelled estimated period window based on the median of up to six
-  recent recorded cycle gaps, with uncertainty messaging and a possible missed
-  log review prompt.
+- An estimated period date and range based on the median of up to six recent
+  recorded cycle gaps, with limited-history messaging, uncertainty explanation,
+  and a possible missing-log review prompt.
 - Symptom and mood check-ins, recent record summaries, cycle insights, and
   cautious, record-based care guidance with separate self-care, medical-advice,
   and urgent-symptom sections.
@@ -186,9 +186,13 @@ under a subpath.
 
 The estimate requires at least three distinct, valid period start dates (two
 complete recorded gaps). It uses the median of up to the six most recent gaps,
-derives a range from observed variation, and asks the user to review a possible
-missing log when the latest gap is unusually long compared with earlier gaps.
-The calendar and dashboard distinguish an estimate from recorded data.
+derives a range from observed variation, and labels two gaps as limited history
+without presenting a confidence percentage. The dashboard and calendar explain
+the median-based calculation, distinguish estimates from records, and ask the
+user to review a possible missing log when the latest gap is unusually long
+compared with earlier gaps. Calendar editing supports both period start and end
+dates; imports and new edits reject overlapping period ranges before those
+dates are used for calculations.
 
 The date-only helpers validate calendar dates and use UTC day arithmetic for
 intervals, avoiding daylight-saving-hour differences. An estimate cannot

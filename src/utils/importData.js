@@ -1,4 +1,4 @@
-import { parseDateOnly } from "./cycle.js";
+import { hasOverlappingPeriods, parseDateOnly } from "./cycle.js";
 
 const periodFlows = ["spotting", "light", "medium", "heavy"];
 const moods = ["very-low", "low", "okay", "good", "very-good"];
@@ -108,6 +108,7 @@ export function validateImportData(data, { today, availableSymptoms }) {
   if (
     !validPeriods ||
     periodDates.size !== periods.length ||
+    hasOverlappingPeriods(periods) ||
     !validSymptoms ||
     new Set(symptoms.flatMap((entry) => entry?.id === undefined ? [] : [String(entry.id)])).size !==
     symptoms.filter((entry) => entry.id !== undefined).length ||

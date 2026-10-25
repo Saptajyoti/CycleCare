@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateImportData } from "./importData.js";
+import { getCycleEstimate } from "./cycle.js";
 
 const availableSymptoms = ["Cramps", "Headache"];
 const options = { today: "2025-06-01", availableSymptoms };
@@ -65,6 +66,35 @@ test("rejects invalid, future, and duplicate period dates", () => {
   const duplicateDate = validExport();
   duplicateDate.periods[1].startDate = duplicateDate.periods[0].startDate;
   assert.throws(() => validateImportData(duplicateDate, options));
+});
+
+test("rejects overlapping periods before imported dates can be used", () => {
+  const overlapping = validExport();
+  overlapping.periods[1].startDate = "2025-01-05";
+  assert.throws(() => validateImportData(overlapping, options));
+});
+
+test("only validated imported dates are used for cycle estimates", () => {
+  const exportData = validExport();
+  exportData.periods.push({
+    startDate: "2025-03-01",
+    periodLength: 4,
+    flow: "light",
+  });
+  const imported = validateImportData(exportData, options);
+  assert.equal(getCycleEstimate(imported.periods)?.medianCycleLength, 30);
+
+  const invalid = validExport();
+  invalid.periods.push({
+    startDate: "2025-03-01",
+    periodLength: 4,
+    flow: "light",
+  });
+  invalid.periods[1].startDate = "2025-01-05";
+  assert.throws(() => {
+    const rejected = validateImportData(invalid, options);
+    getCycleEstimate(rejected.periods);
+  });
 });
 
 test("rejects invalid symptoms, check-in dates, and reminder times", () => {

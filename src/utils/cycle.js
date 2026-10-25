@@ -42,6 +42,28 @@ export function addDays(date, days) {
   return result;
 }
 
+export function hasOverlappingPeriods(entries) {
+  if (!Array.isArray(entries)) return false;
+  const sorted = entries
+    .filter((entry) =>
+      entry &&
+      parseDateOnly(entry.startDate) &&
+      Number.isInteger(entry.periodLength) &&
+      entry.periodLength >= 1 &&
+      entry.periodLength <= 10
+    )
+    .sort((first, second) => first.startDate.localeCompare(second.startDate));
+
+  return sorted.some((entry, index) => {
+    if (index === 0) return false;
+    const previous = sorted[index - 1];
+    const previousEnd = localDateStringForDate(
+      addDays(parseDateOnly(previous.startDate), previous.periodLength - 1)
+    );
+    return entry.startDate <= previousEnd;
+  });
+}
+
 function median(values) {
   if (!values.length) return null;
 
@@ -107,6 +129,7 @@ export function getCycleEstimate(entries, confirmedGap = "") {
 
   return {
     cyclesUsed: intervals.length,
+    historyStatus: intervals.length < 3 ? "limited" : "sufficient",
     medianCycleLength,
     isIrregular,
     spreadDays,

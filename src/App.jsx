@@ -37,6 +37,14 @@ import {
   Minimize2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import {
+  addDays,
+  daysBetween,
+  getCycleEstimate,
+  hasOverlappingPeriods,
+  localDateStringForDate,
+  parseDateOnly,
+} from "./utils/cycle";
 import { validateImportData } from "./utils/importData";
 import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
@@ -745,6 +753,13 @@ function Dashboard({ discreetMode }) {
       setMessage("This period start date is already recorded.");
       return;
     }
+    if (hasOverlappingPeriods([
+      ...entries,
+      { startDate: periodStart, periodLength: Number(periodLength) },
+    ])) {
+      setMessage("These dates overlap another recorded period. Review your period history first.");
+      return;
+    }
 
     const updatedEntries = [
       ...entries,
@@ -927,6 +942,12 @@ function Dashboard({ discreetMode }) {
               <>
                 <strong className="dashboard-estimate-date">{formatDate(cycleEstimate.nextStart)}</strong>
                 <p>Likely window: {formatDateRange(cycleEstimate.windowStart, cycleEstimate.windowEnd)}</p>
+                <p>
+                  {cycleEstimate.historyStatus === "limited"
+                    ? `Limited history: based on ${cycleEstimate.cyclesUsed} recorded cycles.`
+                    : `Sufficient history for a broader tracking estimate: based on ${cycleEstimate.cyclesUsed} recent recorded cycles.`}
+                </p>
+                <p>Method: the median of recent start-to-start intervals, projected from your latest recorded start.</p>
               </>
             ) : cycleEstimate?.needsReview ? (
               <p>A recent gap needs review before showing an estimate.</p>
@@ -1195,6 +1216,7 @@ function CalendarPage() {
   const [, setRefresh] = useState(0);
   const [confirmedGap, setConfirmedGap] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedPeriodStart, setSelectedPeriodStart] = useState("");
   const [selectedPeriodEnd, setSelectedPeriodEnd] = useState("");
   const [selectedFlow, setSelectedFlow] = useState("medium");
   const [selectedIsPeriod, setSelectedIsPeriod] = useState(false);
@@ -1205,7 +1227,10 @@ function CalendarPage() {
   });
 
   useEffect(() => {
-    const updateCalendar = () => setRefresh((value) => value + 1);
+    const updateCalendar = () => {
+      setRefresh((value) => value + 1);
+      setConfirmedGap("");
+    };
 
     window.addEventListener("cyclecare-data-updated", updateCalendar);
 
@@ -1353,7 +1378,7 @@ function CalendarPage() {
               className={`calendar-day ${
                 isPeriodDay ? "period-day" : ""
               } ${isPeriodStart ? "period-start-day" : ""} ${isPeriodEnd ? "period-end-day" : ""} ${isEstimatedDay && !isPeriodDay ? "estimated-day" : ""} ${hasSymptomLog ? "symptom-day" : ""} ${selectedDate === dateString ? "selected-calendar-day" : ""}`}
-              aria-label={`${formatDate(dateString)}${isPeriodDay ? ", recorded period" : ""}${isEstimatedDay ? ", estimated window" : ""}${hasSymptomLog ? ", symptom check-in" : ""}`}
+              aria-label={`${formatDate(dateString)}${isPeriodStart ? ", period start" : isPeriodEnd ? ", last recorded period day" : isPeriodDay ? ", recorded period day" : ""}${isEstimatedDay ? ", estimated window" : ""}${hasSymptomLog ? ", symptom check-in" : ""}`}
               title={
                 isPeriodDay
                   ? "Recorded period day"
@@ -1364,6 +1389,7 @@ function CalendarPage() {
               onClick={() => {
                 const record = entries.find((entry) => entry.startDate === dateString);
                 setSelectedDate(dateString);
+                setSelectedPeriodStart(dateString);
                 setCalendarMessage("");
                 setSelectedPeriodEnd(record
                   ? localDateStringForDate(addDays(parseDateOnly(dateString), record.periodLength - 1))
@@ -1390,21 +1416,48 @@ function CalendarPage() {
           </label>
           {selectedIsPeriod && (
             <>
+              <label className="field-label" htmlFor="calendar-period-start">First day of this period</label>
+              <input
+                id="calendar-period-start"
+                className="animated-date-input"
+                type="date"
+                value={selectedPeriodStart}
+                max={localDateString()}
+                onChange={(event) => {
+                  const nextStart = event.target.value;
+                  const oldDuration = parseDateOnly(selectedPeriodStart) &&
+                    parseDateOnly(selectedPeriodEnd) &&
+                    selectedPeriodEnd >= selectedPeriodStart
+                    ? daysBetween(selectedPeriodStart, selectedPeriodEnd) + 1
+                    : 1;
+                  setSelectedPeriodStart(nextStart);
+                  if (parseDateOnly(nextStart)) {
+                    const nextEnd = addDays(parseDateOnly(nextStart), oldDuration - 1);
+                    setSelectedPeriodEnd(
+                      localDateStringForDate(nextEnd) > localDateString()
+                        ? localDateString()
+                        : localDateStringForDate(nextEnd)
+                    );
+                  }
+                }}
+                required
+              />
               <label className="field-label" htmlFor="calendar-period-end">Last day of this period</label>
               <input
                 id="calendar-period-end"
                 className="animated-date-input"
                 type="date"
                 value={selectedPeriodEnd}
-                min={selectedDate}
-                max={localDateStringForDate(addDays(parseDateOnly(selectedDate), 9)) < localDateString()
-                  ? localDateStringForDate(addDays(parseDateOnly(selectedDate), 9))
+                min={selectedPeriodStart || undefined}
+                max={parseDateOnly(selectedPeriodStart) &&
+                  localDateStringForDate(addDays(parseDateOnly(selectedPeriodStart), 9)) < localDateString()
+                  ? localDateStringForDate(addDays(parseDateOnly(selectedPeriodStart), 9))
                   : localDateString()}
                 onChange={(event) => setSelectedPeriodEnd(event.target.value)}
                 required
               />
-              <p className="privacy-hint">{selectedPeriodEnd && selectedPeriodEnd >= selectedDate
-                ? `${daysBetween(selectedDate, selectedPeriodEnd) + 1} day${daysBetween(selectedDate, selectedPeriodEnd) === 0 ? "" : "s"} recorded`
+              <p className="privacy-hint">{selectedPeriodStart && selectedPeriodEnd && selectedPeriodEnd >= selectedPeriodStart
+                ? `${daysBetween(selectedPeriodStart, selectedPeriodEnd) + 1} day${daysBetween(selectedPeriodStart, selectedPeriodEnd) === 0 ? "" : "s"} recorded`
                 : "Choose a last day on or after the start date."}</p>
               <label className="field-label" htmlFor="calendar-flow">Flow</label>
               <AnimatedSelect id="calendar-flow" className="calendar-flow-select" value={selectedFlow} onChange={(event) => setSelectedFlow(event.target.value)}>
@@ -1418,22 +1471,34 @@ function CalendarPage() {
                 setCalendarMessage("Future dates cannot be saved as period starts.");
                 return;
               }
-              if (selectedIsPeriod && (!selectedPeriodEnd || selectedPeriodEnd < selectedDate || selectedPeriodEnd > localDateString())) {
+              if (selectedIsPeriod && (
+                !parseDateOnly(selectedPeriodStart) ||
+                selectedPeriodStart > localDateString() ||
+                !selectedPeriodEnd ||
+                selectedPeriodEnd < selectedPeriodStart ||
+                selectedPeriodEnd > localDateString()
+              )) {
                 setCalendarMessage("Choose a valid last day on or after the period start.");
                 return;
               }
-              const periodLength = selectedIsPeriod ? daysBetween(selectedDate, selectedPeriodEnd) + 1 : null;
+              const periodLength = selectedIsPeriod ? daysBetween(selectedPeriodStart, selectedPeriodEnd) + 1 : null;
               if (selectedIsPeriod && (periodLength < 1 || periodLength > 10)) {
                 setCalendarMessage("The recorded period must be between 1 and 10 days.");
                 return;
               }
+              const periodStart = selectedPeriodStart || selectedDate;
+              const editingEntry = entries.find((entry) => entry.startDate === selectedDate);
               const updated = entries.filter((entry) => entry.startDate !== selectedDate);
               if (selectedIsPeriod) updated.push({
-                ...(entries.find((entry) => entry.startDate === selectedDate) || {}),
-                startDate: selectedDate,
+                ...(editingEntry || {}),
+                startDate: periodStart,
                 periodLength,
                 flow: selectedFlow,
               });
+              if (hasOverlappingPeriods(updated)) {
+                setCalendarMessage("These dates overlap another recorded period. Review the existing dates first.");
+                return;
+              }
               updated.sort((first, second) => first.startDate.localeCompare(second.startDate));
               setHealthItem("cyclecare_periods", JSON.stringify(updated));
               window.dispatchEvent(new Event("cyclecare-data-updated"));
@@ -1502,6 +1567,12 @@ function CalendarPage() {
               Estimate based on the median of {estimate.cyclesUsed} recent
               cycles: {estimate.medianCycleLength} days.
             </p>
+            <p>
+              {estimate.historyStatus === "limited"
+                ? "Limited history: this estimate uses only two recorded cycle intervals and may shift as you add dates."
+                : "Sufficient history for a broader tracking estimate: this uses at least three recorded cycle intervals. Additional dates can still change the estimate."}
+            </p>
+            <p>Calculation: median start-to-start interval projected from the latest recorded period start; the date range reflects variation in those intervals.</p>
             {estimate.isIrregular && (
               <p>
                 This app labels your pattern irregular because recent cycle
@@ -1581,13 +1652,24 @@ function CalendarPage() {
 
                 <div className="history-details">
                   <h4>
-                    {formatDate(entry.startDate)}
+                    {formatDate(entry.startDate)} – {formatDate(localDateStringForDate(
+                      addDays(parseDateOnly(entry.startDate), entry.periodLength - 1)
+                    ))}
                   </h4>
 
                   <p>
                     {entry.periodLength}{" "}
-                    {entry.periodLength === 1 ? "day" : "days"} recorded
+                    {entry.periodLength === 1 ? "day" : "days"} recorded · {entry.flow} flow
                   </p>
+                  <button
+                    type="button"
+                    className="stat-card-link"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "My Calendar" }));
+                    }}
+                  >
+                    Edit dates in calendar
+                  </button>
                 </div>
               </div>
             ))}
@@ -4049,13 +4131,6 @@ function getCyclePhase(cycleDay, periodLength) {
   return "This date is after the recorded period. The app cannot determine your biological cycle phase.";
 }
 
-function localDateStringForDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function getReminders() {
   try {
     const stored = JSON.parse(getHealthItem("cyclecare_reminders") || "[]");
@@ -4249,109 +4324,6 @@ function getSymptomSummary(records) {
     mostFrequent: frequencies
       .filter((item) => item.count === highestFrequency)
       .map((item) => item.symptom),
-  };
-}
-
-function daysBetween(firstDate, secondDate) {
-  const first = parseDateOnly(firstDate);
-  const second = parseDateOnly(secondDate);
-
-  if (!first || !second) return null;
-
-  return Math.round(
-    (Date.UTC(second.getFullYear(), second.getMonth(), second.getDate()) -
-      Date.UTC(first.getFullYear(), first.getMonth(), first.getDate())) /
-      (1000 * 60 * 60 * 24)
-  );
-}
-
-function parseDateOnly(value) {
-  if (typeof value !== "string") return null;
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-
-  const [, year, month, day] = match.map(Number);
-  const date = new Date(year, month - 1, day);
-
-  return date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-    ? date
-    : null;
-}
-
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function median(values) {
-  const sorted = [...values].sort((first, second) => first - second);
-  const middle = Math.floor(sorted.length / 2);
-
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
-}
-
-function getCycleEstimate(entries, confirmedGap = "") {
-  const sortedEntries = [...entries].sort((a, b) =>
-    a.startDate.localeCompare(b.startDate)
-  );
-
-  if (sortedEntries.length < 3) return null;
-
-  const intervals = sortedEntries
-    .slice(1)
-    .map((entry, index) =>
-      ({
-        days: daysBetween(sortedEntries[index].startDate, entry.startDate),
-        startDate: sortedEntries[index].startDate,
-        endDate: entry.startDate,
-      })
-    )
-    .filter((interval) => interval.days > 0)
-    .slice(-6);
-
-  if (intervals.length < 2) return null;
-
-  const intervalLengths = intervals.map((interval) => interval.days);
-  const medianCycleLength = Math.round(median(intervalLengths));
-  const latestInterval = intervals[intervals.length - 1];
-  const previousIntervals = intervalLengths.slice(0, -1);
-  const previousMedian = median(previousIntervals);
-  const hasUnusualGap =
-    latestInterval.days > previousMedian + 7;
-  const gapKey = `${latestInterval.startDate}:${latestInterval.endDate}`;
-
-  if (hasUnusualGap && confirmedGap !== gapKey) {
-    return { needsReview: true, gapKey };
-  }
-
-  const intervalSpread =
-    Math.max(...intervalLengths) - Math.min(...intervalLengths);
-  const isIrregular = intervalSpread > 7;
-  const largestDeviation = Math.ceil(
-    Math.max(...intervalLengths.map((interval) => Math.abs(interval - medianCycleLength)))
-  );
-  const spreadDays = isIrregular
-    ? Math.max(7, largestDeviation)
-    : Math.max(2, largestDeviation);
-  const latestStart = parseDateOnly(
-    sortedEntries[sortedEntries.length - 1].startDate
-  );
-  const nextStart = addDays(latestStart, medianCycleLength);
-
-  return {
-    cyclesUsed: intervals.length,
-    medianCycleLength,
-    isIrregular,
-    spreadDays,
-    nextStart,
-    windowStart: addDays(nextStart, -spreadDays),
-    windowEnd: addDays(nextStart, spreadDays),
   };
 }
 

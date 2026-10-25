@@ -4,6 +4,7 @@ import {
   addDays,
   daysBetween,
   getCycleEstimate,
+  hasOverlappingPeriods,
   localDateStringForDate,
   parseDateOnly,
 } from "./cycle.js";
@@ -43,6 +44,23 @@ test("does not estimate with fewer than two complete intervals", () => {
   );
 });
 
+test("labels limited and larger history without implying a confidence percentage", () => {
+  const limited = getCycleEstimate(datesFromIntervals([28, 29]));
+  const moreHistory = getCycleEstimate(datesFromIntervals([28, 29, 28]));
+
+  assert.equal(limited?.historyStatus, "limited");
+  assert.equal(limited?.cyclesUsed, 2);
+  assert.equal(moreHistory?.historyStatus, "sufficient");
+  assert.equal(moreHistory?.cyclesUsed, 3);
+  assert.equal("confidence" in (limited || {}), false);
+});
+
+test("rounds the midpoint of an even-count median without adding confidence claims", () => {
+  const estimate = getCycleEstimate(datesFromIntervals([28, 29]));
+  assert.equal(estimate?.medianCycleLength, 29);
+  assert.equal(estimate?.historyStatus, "limited");
+});
+
 test("ignores malformed and duplicate dates before estimating", () => {
   const estimate = getCycleEstimate([
     { startDate: "2025-01-01" },
@@ -54,6 +72,17 @@ test("ignores malformed and duplicate dates before estimating", () => {
 
   assert.equal(estimate?.medianCycleLength, 30);
   assert.equal(estimate?.cyclesUsed, 2);
+});
+
+test("rejects overlapping period date ranges", () => {
+  assert.equal(hasOverlappingPeriods([
+    { startDate: "2025-01-01", periodLength: 5 },
+    { startDate: "2025-01-05", periodLength: 4 },
+  ]), true);
+  assert.equal(hasOverlappingPeriods([
+    { startDate: "2025-01-01", periodLength: 5 },
+    { startDate: "2025-01-06", periodLength: 4 },
+  ]), false);
 });
 
 test("uses only the six most recent complete intervals", () => {
@@ -95,4 +124,27 @@ test("calculates a date window across a year boundary", () => {
   assert.equal(localDateStringForDate(estimate.nextStart), "2025-01-01");
   assert.equal(localDateStringForDate(estimate.windowStart), "2024-12-30");
   assert.equal(localDateStringForDate(estimate.windowEnd), "2025-01-03");
+});
+
+test("leap-year and month-boundary records produce local-date estimates", () => {
+  const estimate = getCycleEstimate(
+    datesFromIntervals([29, 29], "2024-01-31")
+  );
+
+  assert.equal(estimate?.medianCycleLength, 29);
+  assert.equal(localDateStringForDate(estimate.nextStart), "2024-04-27");
+});
+
+test("correcting an earlier start date recalculates the projected estimate", () => {
+  const original = datesFromIntervals([28, 29, 28]);
+  const corrected = datesFromIntervals([31, 29, 28]);
+  const originalEstimate = getCycleEstimate(original);
+  const correctedEstimate = getCycleEstimate(corrected);
+
+  assert.equal(originalEstimate?.medianCycleLength, 28);
+  assert.equal(correctedEstimate?.medianCycleLength, 29);
+  assert.notEqual(
+    localDateStringForDate(originalEstimate.nextStart),
+    localDateStringForDate(correctedEstimate.nextStart)
+  );
 });
