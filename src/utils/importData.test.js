@@ -94,3 +94,39 @@ test("rejects malformed symptom and profile field types", () => {
   invalidProfile.ageGroup = "unknown";
   assert.throws(() => validateImportData(invalidProfile, options));
 });
+
+test("rejects wrong formats, coerced numeric values, and oversized notes", () => {
+  const wrongFormat = validExport();
+  wrongFormat.format = "unknown-export";
+  assert.throws(() => validateImportData(wrongFormat, options));
+
+  const stringDuration = validExport();
+  stringDuration.periods[0].periodLength = "5";
+  assert.throws(() => validateImportData(stringDuration, options));
+
+  const oversizedNote = validExport();
+  oversizedNote.symptoms[0].note = "x".repeat(4001);
+  assert.throws(() => validateImportData(oversizedNote, options));
+});
+
+test("rejects duplicate symptom IDs, symptom tags, reminder IDs, and tracked symptoms", () => {
+  const duplicateId = validExport();
+  duplicateId.symptoms.push({ ...duplicateId.symptoms[0] });
+  assert.throws(() => validateImportData(duplicateId, options));
+
+  const duplicateTag = validExport();
+  duplicateTag.symptoms[0].symptoms = ["Cramps", "Cramps"];
+  assert.throws(() => validateImportData(duplicateTag, options));
+
+  const duplicateReminder = validExport();
+  duplicateReminder.reminders.push({ ...duplicateReminder.reminders[0] });
+  assert.throws(() => validateImportData(duplicateReminder, options));
+
+  const duplicateTracked = validExport();
+  duplicateTracked.trackedSymptoms = ["Cramps", "Cramps"];
+  assert.throws(() => validateImportData(duplicateTracked, options));
+
+  const nullSymptom = validExport();
+  nullSymptom.symptoms.push(null);
+  assert.throws(() => validateImportData(nullSymptom, options));
+});

@@ -41,6 +41,7 @@ app.use(express.json({ limit: "10kb" }));
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
+const healthSafetyModule = import("../shared/healthSafety.js");
 
 // CycleCare assistant instructions
 const SYSTEM_INSTRUCTION = `
@@ -51,18 +52,18 @@ general wellbeing related to menstrual health, and explaining
 how to use the CycleCare application.
 
 Rules:
-1. Provide general educational information, not a diagnosis.
+1. Provide general educational information, never a diagnosis or treatment plan.
 2. Be clear about uncertainty and avoid unsupported medical claims.
-3. Do not recommend starting or stopping medication.
+3. Never recommend starting, changing, or stopping medication.
 4. Encourage appropriate professional medical care when needed.
-5. For potentially life-threatening symptoms, advise urgent
-   medical assessment.
-6. Politely refuse unrelated questions and redirect users
+5. Put urgent assessment guidance before any other information for potentially dangerous symptoms.
+6. Never soften, contradict, or replace urgent safety guidance with reassurance.
+7. Politely refuse unrelated questions and redirect users
    to CycleCare's intended topics.
-7. Never claim to know the user's medical history.
-8. Use clear, empathetic, easy-to-understand language.
-9. Do not claim to have accessed the user's CycleCare records.
-10. Do not replace a healthcare professional.
+8. Never claim to know the user's medical history.
+9. Use clear, empathetic, easy-to-understand language.
+10. Do not claim to have accessed the user's CycleCare records.
+11. Do not replace a healthcare professional.
 `;
 
 // Health check
@@ -108,6 +109,17 @@ app.post("/api/assistant", async (req, res) => {
     ) {
       return res.status(400).json({
         error: "Please provide a question of up to 2000 characters.",
+      });
+    }
+
+    const { getHealthSafetyGuidance } = await healthSafetyModule;
+    const safetyGuidance = getHealthSafetyGuidance(message);
+    if (safetyGuidance) {
+      outcome = "local-safety-guidance";
+      return res.json({
+        answer: safetyGuidance.message,
+        safety: true,
+        category: safetyGuidance.category,
       });
     }
 

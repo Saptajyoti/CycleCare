@@ -115,3 +115,36 @@ test("assistant route requires the explicit consent request format", async () =>
     error: "AI consent is required.",
   });
 });
+
+test("backend returns fixed urgent guidance without contacting Gemini", async () => {
+  const response = await fetch(`${baseUrl}/api/assistant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: "I'm bleeding a lot and feel faint",
+      consent: true,
+    }),
+  });
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.safety, true);
+  assert.equal(payload.category, "urgent");
+  assert.match(payload.answer, /urgent medical assessment/i);
+  assert.match(payload.answer, /112/);
+});
+
+test("backend returns fixed medical guidance for misspelled symptoms", async () => {
+  const response = await fetch(`${baseUrl}/api/assistant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: "My periods are irreglar and one lasted 9 days",
+      consent: true,
+    }),
+  });
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.safety, true);
+  assert.equal(payload.category, "medical");
+  assert.match(payload.answer, /qualified healthcare professional/i);
+});

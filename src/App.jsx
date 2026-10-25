@@ -37,9 +37,17 @@ import {
   Minimize2,
 } from "lucide-react";
 import { healthLessons } from "./content/healthLessons";
+import { validateImportData } from "./utils/importData";
+import { createVaultEnvelope, encryptVaultData, openVaultEnvelope } from "./utils/vault";
 import { CycleCareLogo } from "./components/CycleCareLogo";
 import { AssistantMarkdown } from "./components/AssistantMarkdown";
-import { hasAiConsent, requestAssistantResponse, setAiConsent } from "./utils/assistant";
+import {
+  hasAiConsent,
+  protectAssistantAnswer,
+  requestAssistantResponse,
+  setAiConsent,
+} from "./utils/assistant";
+import { getHealthSafetyGuidance } from "../shared/healthSafety.js";
 
 import "./App.css";
 import "./assistant.css";
@@ -57,6 +65,7 @@ const encryptedStorageKeys = [
 ];
 let vaultKey = null;
 let vaultData = null;
+let vaultMetadata = null;
 let vaultWriteQueue = Promise.resolve();
 
 const navigation = [
@@ -353,8 +362,8 @@ function App() {
     setShowOnboarding(false);
   }
 
-  function unlockVault(pin) {
-    return openHealthVault(pin).then(() => {
+  function unlockVault(secret) {
+    return openHealthVault(secret).then(() => {
       setAgeGroup(getHealthItem("cyclecare_age_group") || "adult");
       setPregnancyVisible(
         getHealthItem("cyclecare_pregnancy_info_visible") === "true"
@@ -370,12 +379,20 @@ function App() {
     return vaultWriteQueue.then(() => {
       vaultKey = null;
       vaultData = null;
+      vaultMetadata = null;
+      setSymptomEditRecord(null);
+      setAgeGroup("adult");
+      setPregnancyVisible(false);
       setVaultLocked(true);
     });
   }
 
   function enableVault(pin) {
     return createHealthVault(pin).then(() => setVaultLocked(false));
+  }
+
+  function changeVaultPin(pin) {
+    return changeHealthVaultPin(pin);
   }
 
   function updateAgeGroup(value) {
@@ -515,6 +532,7 @@ function App() {
             language={language}
             onLanguageChange={chooseLanguage}
             onEnableVault={enableVault}
+            onChangeVaultPin={changeVaultPin}
             onLockVault={lockVault}
             ageGroup={ageGroup}
             onAgeGroupChange={updateAgeGroup}
@@ -1598,53 +1616,152 @@ function CareGuidancePage() {
         or tell you that a warning sign is safe to ignore.
       </p>
 
-      {guidance.length ? (
-        <div className="care-guidance-list">
-          {guidance.map((item) => (
-            <article className="care-guidance-card" key={item.id}>
-              <h3>{item.title}</h3>
-              <p>{item.observed}</p>
-              <p>{item.why}</p>
-              <p>{item.nextStep}</p>
-              <a href={item.source.url} target="_blank" rel="noreferrer">
-                Source: {item.source.name} <ExternalLink size={14} />
-              </a>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="care-guidance-card">
-          <h3>No date-based prompts from your current records</h3>
+      <section className="care-guidance-category" aria-labelledby="self-care-heading">
+        <h3 id="self-care-heading">General self-care</h3>
+        <article className="care-guidance-card">
           <p>
-            This is not a medical assessment. Your records may be incomplete,
-            and the app cannot check flow, pain, bleeding between periods,
-            pregnancy, or other symptoms.
+            For familiar, mild cramps, some people find a warm bath or a wrapped
+            heat pad, gentle movement, rest, and keeping hydrated comforting.
+            Stop anything that makes you feel worse. These are comfort ideas,
+            not treatments; do not start or stop medication based on this app.
           </p>
-        </div>
-      )}
-      <section className="care-guidance-card">
-        <h3>Changes the app cannot check from your records</h3>
-        <p>
-          Speak with a healthcare professional if you have not had a first
-          period by age 15, your periods suddenly change after years of being
-          regular, or you have bleeding after menopause. These situations
-          require information the app does not collect.
-        </p>
-        <a href="https://www.nhs.uk/symptoms/missed-or-late-periods/" target="_blank" rel="noreferrer">
-          Source: NHS, Missed or late periods <ExternalLink size={14} />
-        </a>
+          <a href="https://www.nhs.uk/symptoms/period-pain/" target="_blank" rel="noreferrer">
+            Source: NHS, Period pain <ExternalLink size={14} />
+          </a>
+        </article>
       </section>
-      <section className="care-guidance-card">
-        <h3>Ways to seek care</h3>
+
+      <section className="care-guidance-category" aria-labelledby="medical-advice-heading">
+        <h3 id="medical-advice-heading">Arrange medical advice</h3>
+        <article className="care-guidance-card">
+          <h4>Bleeding or period changes</h4>
+          <p>
+            Talk with a qualified healthcare professional if bleeding lasts
+            longer than 7 days, repeatedly requires changing a pad or tampon
+            every 1–2 hours, includes large clots, disrupts daily life, or
+            bleeding happens between periods or after sex. Repeatedly short,
+            long, or changing cycles also deserve discussion.
+          </p>
+          <p>
+            If you miss 3 periods in a row or go about 90 days without one,
+            seek professional advice. If pregnancy is possible, consider a
+            pregnancy test and follow its instructions. A missed period has
+            many possible causes and is not a diagnosis.
+          </p>
+          <div className="care-guidance-sources">
+            <a href="https://www.nhs.uk/conditions/heavy-periods/" target="_blank" rel="noreferrer">
+              Source: NHS, Heavy periods <ExternalLink size={14} />
+            </a>
+            <a href="https://www.nhs.uk/symptoms/irregular-periods/" target="_blank" rel="noreferrer">
+              Source: NHS, Irregular periods <ExternalLink size={14} />
+            </a>
+            <a href="https://www.nhs.uk/symptoms/missed-or-late-periods/" target="_blank" rel="noreferrer">
+              Source: NHS, Missed or late periods <ExternalLink size={14} />
+            </a>
+          </div>
+        </article>
+        <article className="care-guidance-card">
+          <h4>Pain or other symptoms</h4>
+          <p>
+            Seek medical advice if period pain is severe, worsening, new for
+            you, or stops usual activities. Also ask for advice if symptoms
+            worry you, even if they are not listed here. Cycle records cannot
+            diagnose PCOS, endometriosis, or another condition.
+          </p>
+          <a href="https://www.nhs.uk/symptoms/period-pain/" target="_blank" rel="noreferrer">
+            Source: NHS, Period pain <ExternalLink size={14} />
+          </a>
+        </article>
+        {guidance.length ? (
+          <div className="care-guidance-list">
+            {guidance.map((item) => (
+              <article className="care-guidance-card" key={item.id}>
+                <h4>{item.title}</h4>
+                <p>{item.observed}</p>
+                <p>{item.why}</p>
+                <p>{item.nextStep}</p>
+                <a href={item.source.url} target="_blank" rel="noreferrer">
+                  Source: {item.source.name} <ExternalLink size={14} />
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <article className="care-guidance-card">
+            <h4>No date-based prompts from your current records</h4>
+            <p>
+              This is not a medical assessment. Records may be incomplete, and
+              the app cannot check symptoms you have not logged.
+            </p>
+          </article>
+        )}
+        <article className="care-guidance-card">
+          <h4>Information this app cannot check</h4>
+          <p>
+            Speak with a healthcare professional if you have not had a first
+            period by age 15, your periods suddenly change after years of being
+            regular, or you have bleeding after menopause.
+          </p>
+          <a href="https://www.nhs.uk/symptoms/missed-or-late-periods/" target="_blank" rel="noreferrer">
+            Source: NHS, Missed or late periods <ExternalLink size={14} />
+          </a>
+        </article>
+        <article className="care-guidance-card">
+          <h4>Ways to seek care</h4>
+          <p>
+            Consider a nearby government health centre, a qualified
+            gynaecologist, or a tele-consultation service. Availability and
+            eligibility can vary by location.
+          </p>
+          <a href="https://esanjeevani.mohfw.gov.in/" target="_blank" rel="noreferrer">
+            Government of India eSanjeevani tele-consultation
+            <ExternalLink size={14} />
+          </a>
+        </article>
+      </section>
+
+      <section className="care-guidance-category" aria-labelledby="urgent-care-heading">
+        <h3 id="urgent-care-heading">Urgent symptoms—get help now</h3>
+        <div className="care-urgent-note">
+        <h3>Get urgent medical help</h3>
         <p>
-          Consider a nearby government health centre, a qualified
-          gynaecologist, or a tele-consultation service. Availability and
-          eligibility can vary by location.
+          Seek urgent medical assessment for sudden or severe lower-belly pain;
+          very heavy bleeding with dizziness, fainting, or feeling very unwell;
+          or severe pain or bleeding when pregnancy is possible. Contact your
+          local emergency service or go to an emergency department. In India,
+          call 112.
         </p>
-        <a href="https://esanjeevani.mohfw.gov.in/" target="_blank" rel="noreferrer">
-          Government of India eSanjeevani tele-consultation
-          <ExternalLink size={14} />
-        </a>
+        <p>
+          CycleCare does not monitor emergencies. Do not wait for an app
+          estimate or a logged pattern if you have a concerning symptom.
+        </p>
+        <div className="care-guidance-sources">
+          <a
+            href="https://www.nhs.uk/symptoms/period-pain/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source: NHS, Period pain <ExternalLink size={14} />
+          </a>
+          <a
+            href="https://www.nhs.uk/conditions/ectopic-pregnancy/symptoms/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source: NHS, Ectopic pregnancy symptoms <ExternalLink size={14} />
+          </a>
+          <a
+            href="https://www.nhs.uk/conditions/heavy-periods/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source: NHS, Heavy periods <ExternalLink size={14} />
+          </a>
+          <a href="https://112.gov.in/" target="_blank" rel="noreferrer">
+            India Emergency Response Support System (112) <ExternalLink size={14} />
+          </a>
+        </div>
+        </div>
       </section>
       <button
         className="secondary-button print-summary-button"
@@ -1679,42 +1796,11 @@ function CareGuidancePage() {
           <ul><li>What could be causing the changes I recorded?</li><li>What should I monitor or do next?</li><li>When should I seek urgent care?</li></ul>
         </section>
       )}
-      <div className="care-urgent-note">
-        <h3>Get urgent medical help</h3>
-        <p>
-          Seek urgent medical care for sudden severe lower-belly pain. Very
-          heavy bleeding with dizziness or fainting, or severe pain or bleeding
-          when pregnancy is possible, also needs urgent medical assessment.
-          Contact your local emergency service or go to an emergency department.
-        </p>
-        <p>
-          CycleCare does not monitor emergencies. Do not wait for an app
-          estimate or a logged pattern if you have a concerning symptom.
-        </p>
-        <div className="care-guidance-sources">
-          <a
-            href="https://www.nhs.uk/symptoms/period-pain/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Period pain <ExternalLink size={14} />
-          </a>
-          <a
-            href="https://www.nhs.uk/conditions/ectopic-pregnancy/symptoms/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Ectopic pregnancy symptoms <ExternalLink size={14} />
-          </a>
-          <a
-            href="https://www.nhs.uk/conditions/heavy-periods/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: NHS, Heavy periods <ExternalLink size={14} />
-          </a>
-        </div>
-      </div>
+      <p className="clinical-review-note">
+        Health guidance is based on the linked public sources and has not yet
+        been reviewed by a qualified clinician. It is general education, not
+        diagnosis or a substitute for individual medical care.
+      </p>
     </section>
   );
 }
@@ -1922,7 +2008,6 @@ function FloatingAssistant() {
   const launcherRef = useRef(null);
   const inputRef = useRef(null);
   const transcriptRef = useRef(null);
-  const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(draft);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -1999,17 +2084,19 @@ function FloatingAssistant() {
   async function sendMessage(event) {
     event.preventDefault();
     const message = draft.trim();
-    const urgent = /self.harm|hurt myself|kill myself|आत्महत्या|खुद को नुकसान|मरना चाहती/i.test(message);
-    if (!message || isAskingAi || (!aiConsent && !urgent)) return;
+    const safetyGuidance = getHealthSafetyGuidance(message);
+    if (!message || isAskingAi || (!aiConsent && !safetyGuidance)) return;
 
     setDraft("");
     setAiError("");
-    if (urgent) {
+    if (safetyGuidance) {
       setMessages((current) => [...current,
         { role: "user", content: message },
         {
           role: "safety",
-          content: "If you may act on thoughts of self-harm or are in immediate danger, contact local emergency services or go to an emergency department. In India, you can call Tele-MANAS at 14416.",
+          title: safetyGuidance.title,
+          category: safetyGuidance.category,
+          content: safetyGuidance.message,
         },
       ]);
       return;
@@ -2019,7 +2106,7 @@ function FloatingAssistant() {
     setIsAskingAi(true);
     try {
       const answer = await requestAssistantResponse(message);
-      setMessages((current) => [...current, { role: "assistant", content: answer }]);
+      setMessages((current) => [...current, protectAssistantAnswer(answer)]);
     } catch (error) {
       setAiError(error.message || "The AI assistant is temporarily unavailable.");
     } finally {
@@ -2090,14 +2177,25 @@ function FloatingAssistant() {
             {messages.length === 0 ? (
               <p className="assistant-welcome">Ask an educational question. Please do not include personal health records or identifying details.</p>
             ) : messages.map((message, index) => (
-              <article className={`assistant-message assistant-message-${message.role}`} key={`${message.role}-${index}`}>
+              <article
+                className={`assistant-message assistant-message-${message.role}`}
+                aria-label={message.role === "safety"
+                  ? message.category === "urgent" ? "Urgent safety guidance" : "Medical guidance"
+                  : undefined}
+                key={`${message.role}-${index}`}
+              >
                 {message.role === "assistant" ? (
                   <AssistantMarkdown content={message.content} />
                 ) : message.role === "safety" ? (
                   <>
-                    <strong>Support is available now</strong>
+                    <strong>{message.title}</strong>
                     <p>{message.content}</p>
-                    <a href="https://telemanas.mohfw.gov.in/" target="_blank" rel="noreferrer">Tele-MANAS support</a>
+                    {message.title === "Immediate support is available" && (
+                      <a href="https://telemanas.mohfw.gov.in/" target="_blank" rel="noreferrer">Tele-MANAS support</a>
+                    )}
+                    {message.category === "urgent" && (
+                      <a href="https://112.gov.in/" target="_blank" rel="noreferrer">India emergency help (112)</a>
+                    )}
                   </>
                 ) : (
                   <p>{message.content}</p>
@@ -2111,16 +2209,43 @@ function FloatingAssistant() {
               </p>
             )}
           </div>
-          {aiError && <div className="assistant-error-toast" role="alert">{aiError}</div>}
+          {aiError && (
+            <div className="assistant-error-toast" role="alert">
+              <p>{aiError}</p>
+              <p>
+                This app cannot assess symptoms or diagnose a condition. Do not
+                start or stop medication based on AI. For sudden severe pain,
+                very heavy bleeding with faintness, or severe pain or bleeding
+                when pregnancy is possible, seek urgent medical care now.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("cyclecare-navigate", { detail: "Offline answers" }))}
+              >
+                Open offline answers
+              </button>
+            </div>
+          )}
+          <p className="assistant-medical-disclaimer">
+            AI answers are general education only—not diagnosis or treatment.
+            Do not start or stop medication based on an AI response. Urgent
+            safety guidance takes priority over AI.
+          </p>
           {!aiConsent && (
-            <label className="ai-consent assistant-popover-consent">
-              <input
-                type="checkbox"
-                checked={false}
-                onChange={() => updateConsent(true)}
-              />
-              <span>I agree to send only my question to Gemini AI for a cloud-generated educational response.</span>
-            </label>
+            <>
+              <label className="ai-consent assistant-popover-consent">
+                <input
+                  type="checkbox"
+                  checked={false}
+                  onChange={() => updateConsent(true)}
+                />
+                <span>I agree to send a question I type here for a cloud-generated educational response.</span>
+              </label>
+              <p className="assistant-consent-details">
+                The question is sent through CycleCare's server to Google Gemini. Saved CycleCare records and this chat history are not sent. These services may process standard connection details, such as your IP address. Do not include names, contact details, or other identifying or sensitive information. Your choice is saved in this browser until you revoke it.
+                {" "}<a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google Gemini API terms</a>
+              </p>
+            </>
           )}
           {aiConsent ? (
             <form className="assistant-chat-form" onSubmit={sendMessage}>
@@ -2421,7 +2546,7 @@ function OnboardingDialog({ onChoose, onLanguageChange, language }) {
 }
 
 function VaultUnlockDialog({ onUnlock }) {
-  const [pin, setPin] = useState("");
+  const [secret, setSecret] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [pinRejected, setPinRejected] = useState(false);
@@ -2433,20 +2558,25 @@ function VaultUnlockDialog({ onUnlock }) {
 
   async function submit(event) {
     event.preventDefault();
-    if (!/^\d{4}$/.test(pin)) {
-      setMessage("Enter your four-digit PIN.");
+    const vaultVersion = getEncryptedVaultVersion();
+    if (vaultVersion === 1 && !/^\d{4}$/.test(secret)) {
+      setMessage("Enter your existing four-digit PIN.");
+      return;
+    }
+    if (vaultVersion === 3 && !/^\d{5}$/.test(secret)) {
+      setMessage("Enter your five-digit PIN.");
       return;
     }
     setBusy(true);
     setMessage("");
     setShowWrongPassword(false);
     try {
-      await onUnlock(pin);
+      await onUnlock(secret);
     } catch {
       setIsRebuilding(false);
       setPinRejected(true);
       pinFallTimer.current = window.setTimeout(() => {
-        setPin("");
+        setSecret("");
         setPinRejected(false);
         setMessage("");
         setShowWrongPassword(true);
@@ -2462,31 +2592,37 @@ function VaultUnlockDialog({ onUnlock }) {
   return (
     <div className="onboarding-backdrop vault-unlock-backdrop">
       <div className="vault-lock-brand">CycleCare</div>
-      {showWrongPassword && <div className="vault-wrong-password-toast" role="alert">Your password is wrong</div>}
+      {showWrongPassword && <div className="vault-wrong-password-toast" role="alert">That credential could not unlock your vault. Check it and try again.</div>}
       <section className={`onboarding-dialog vault-unlock-dialog ${message ? "has-error" : ""} ${pinRejected ? "is-breaking" : ""} ${isRebuilding ? "is-rebuilding" : ""}`} role="dialog" aria-modal="true" aria-labelledby="vault-heading">
         <div className="vault-lock-icon"><LockKeyhole size={25} aria-hidden="true" /></div>
         <h2 id="vault-heading">CycleCare is locked</h2>
-        <p>Your health records are encrypted on this device. Enter the four-digit PIN to unlock. A forgotten PIN cannot be recovered.</p>
+        <p>{getEncryptedVaultVersion() === 1
+          ? "Your existing vault uses a four-digit PIN. Enter it to unlock, then set a new five-digit PIN in Settings. A forgotten PIN cannot be recovered."
+          : getEncryptedVaultVersion() === 2
+            ? "This vault uses an older credential format. Enter the credential you set previously, then set a new five-digit PIN in Settings."
+            : "Your health records are encrypted on this device. Enter your five-digit PIN to unlock. A forgotten PIN cannot be recovered."}</p>
         <form className="vault-unlock-form" onSubmit={submit}>
-          <label className="field-label" htmlFor="vault-pin">Four-digit PIN</label>
-          <div className="vault-pin-entry">
-            <input id="vault-pin" className="vault-pin-input" type="password" inputMode="numeric" autoComplete="current-password" maxLength={4} value={pin} onChange={(event) => {
-              setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
+          <label className="field-label" htmlFor="vault-pin">{getEncryptedVaultVersion() === 1
+            ? "Existing four-digit PIN"
+            : getEncryptedVaultVersion() === 2 ? "Existing vault credential" : "Five-digit PIN"}</label>
+          <div className={`vault-pin-entry ${getEncryptedVaultVersion() === 2 ? "is-passphrase" : getEncryptedVaultVersion() === 1 ? "is-legacy-pin" : "is-pin"}`}>
+            <input id="vault-pin" className="vault-pin-input" type="password" inputMode={getEncryptedVaultVersion() === 2 ? "text" : "numeric"} autoComplete="current-password" maxLength={getEncryptedVaultVersion() === 1 ? 4 : getEncryptedVaultVersion() === 2 ? 256 : 5} value={secret} onChange={(event) => {
+              setSecret(getEncryptedVaultVersion() === 2 ? event.target.value : event.target.value.replace(/\D/g, "").slice(0, getEncryptedVaultVersion() === 1 ? 4 : 5));
               setMessage("");
               setPinRejected(false);
               window.clearTimeout(pinFallTimer.current);
             }} required disabled={busy || pinRejected} />
-            <div className="vault-pin-slots" aria-hidden="true">
-              {Array.from({ length: 4 }, (_, index) => (
+            {getEncryptedVaultVersion() !== 2 && <div className={`vault-pin-slots ${getEncryptedVaultVersion() === 1 ? "is-legacy-pin" : ""}`} aria-hidden="true">
+              {Array.from({ length: getEncryptedVaultVersion() === 1 ? 4 : 5 }, (_, index) => (
                 <span
                   className={`vault-pin-slot ${pinRejected ? "is-rejected" : ""}`}
-                  key={`${index}-${Boolean(pin[index])}-${pinRejected}`}
+                  key={`${index}-${Boolean(secret[index])}-${pinRejected}`}
                   style={{ "--pin-index": index }}
                 >
-                  {pin[index] && <span className="vault-pin-dot" />}
+                  {secret[index] && <span className="vault-pin-dot" />}
                 </span>
               ))}
-            </div>
+            </div>}
           </div>
           <button className="primary-button" type="submit" disabled={busy || pinRejected}>
             {busy && <span className="vault-loading-spinner" aria-hidden="true" />}
@@ -3278,6 +3414,7 @@ function SettingsPage({
   language,
   onLanguageChange,
   onEnableVault,
+  onChangeVaultPin,
   onLockVault,
   ageGroup,
   onAgeGroupChange,
@@ -3297,8 +3434,8 @@ function SettingsPage({
   const [highContrast, setHighContrast] = useState(
     () => localStorage.getItem("cyclecare_high_contrast") === "true"
   );
-  const [pin, setPin] = useState("");
-  const [pinConfirm, setPinConfirm] = useState("");
+  const [vaultPin, setVaultPin] = useState("");
+  const [vaultPinConfirm, setVaultPinConfirm] = useState("");
   const [trackedSymptoms, setTrackedSymptoms] = useState(() => getTrackedSymptoms());
   const [hasVault, setHasVault] = useState(() => hasEncryptedVault());
   const [fertilityVisible, setFertilityVisible] = useState(
@@ -3333,16 +3470,11 @@ function SettingsPage({
         trackedSymptoms,
         exportedAt: new Date().toISOString(),
       };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `cyclecare-private-data-${localDateString()}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadFile(
+        JSON.stringify(data, null, 2),
+        `cyclecare-private-data-${localDateString()}.json`,
+        "application/json;charset=utf-8"
+      );
       setMessage("Your data export has been prepared on this device.");
     } catch {
       setMessage("We could not prepare your export. Please try again.");
@@ -3350,68 +3482,56 @@ function SettingsPage({
   }
 
   function exportCsv() {
-    const rows = [
-      ["type", "date", "details"],
-      ...getPeriodEntries().map((item) => [
-        "period",
-        item.startDate,
-        `${item.periodLength} days; flow ${item.flow}; frequent pad changes ${item.changesEveryHour}; large clots ${item.largeClots}`,
-      ]),
-      ...getSymptomEntries().map((item) => [
-        "check-in",
-        item.date,
-        `symptoms=${item.symptoms.join("|")}; pain=${item.pain}/10; mood=${item.mood}; energy=${item.energy}; sleep=${item.sleepHours ?? ""}; medicines=${item.medicines}; note=${item.note}`,
-      ]),
-    ];
-    const csv = rows.map((row) =>
-      row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")
-    ).join("\r\n");
-    downloadFile(csv, `cyclecare-data-${localDateString()}.csv`, "text/csv;charset=utf-8");
-    setMessage("CSV export prepared. Keep the downloaded file private.");
+    try {
+      const rows = [
+        ["type", "date", "details"],
+        ...getPeriodEntries().map((item) => [
+          "period",
+          item.startDate,
+          `${item.periodLength} days; flow ${item.flow}; frequent pad changes ${item.changesEveryHour}; large clots ${item.largeClots}`,
+        ]),
+        ...getSymptomEntries().map((item) => [
+          "check-in",
+          item.date,
+          `symptoms=${item.symptoms.join("|")}; pain=${item.pain}/10; mood=${item.mood}; energy=${item.energy}; sleep=${item.sleepHours ?? ""}; medicines=${item.medicines}; note=${item.note}`,
+        ]),
+      ];
+      const csv = rows.map((row) =>
+        row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")
+      ).join("\r\n");
+      downloadFile(csv, `cyclecare-data-${localDateString()}.csv`, "text/csv;charset=utf-8");
+      setMessage("CSV export prepared on this device. Keep the downloaded file private.");
+    } catch {
+      setMessage("We could not prepare your CSV export. Please try again.");
+    }
   }
 
   async function importData(event) {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("Import file is larger than the 5 MB limit.");
+      }
       const parsed = JSON.parse(await file.text());
-      if (
-        !parsed ||
-        !Array.isArray(parsed.periods) ||
-        !Array.isArray(parsed.symptoms)
-      ) {
-        throw new Error("Invalid CycleCare export shape");
-      }
-      const periods = parsed.periods.filter(
-        (entry) =>
-          entry &&
-          parseDateOnly(entry.startDate) &&
-          entry.startDate <= localDateString() &&
-          Number.isInteger(Number(entry.periodLength)) &&
-          Number(entry.periodLength) >= 1 &&
-          Number(entry.periodLength) <= 10
-      );
-      const symptoms = parsed.symptoms.filter(
-        (entry) =>
-          entry &&
-          parseDateOnly(entry.date) &&
-          Array.isArray(entry.symptoms)
-      );
-      if (periods.length !== parsed.periods.length || symptoms.length !== parsed.symptoms.length) {
-        throw new Error("Export contains invalid or unsupported records");
-      }
-      if (!window.confirm("Replace the current period and symptom records with the valid records in this file?")) return;
-      setHealthItem("cyclecare_periods", JSON.stringify(periods));
-      setHealthItem("cyclecare_symptoms", JSON.stringify(symptoms));
-      setHealthItem("cyclecare_reminders", JSON.stringify(Array.isArray(parsed.reminders) ? parsed.reminders : []));
-      setHealthItem("cyclecare_pregnancy_mode", String(parsed.pregnancyMode === true));
-      setHealthItem("cyclecare_age_group", ["under18", "adult", "prefer-not"].includes(parsed.ageGroup) ? parsed.ageGroup : "adult");
-      setHealthItem("cyclecare_tracked_symptoms", JSON.stringify(Array.isArray(parsed.trackedSymptoms) ? parsed.trackedSymptoms.filter((value) => availableSymptoms.includes(value)) : availableSymptoms));
+      const imported = validateImportData(parsed, {
+        today: localDateString(),
+        availableSymptoms,
+      });
+      if (!window.confirm("Replace the current period and symptom records with the valid records in this file? Export a backup first if you may need the current records.")) return;
+      setHealthItem("cyclecare_periods", JSON.stringify(imported.periods));
+      setHealthItem("cyclecare_symptoms", JSON.stringify(imported.symptoms));
+      setHealthItem("cyclecare_reminders", JSON.stringify(imported.reminders));
+      setHealthItem("cyclecare_pregnancy_mode", String(imported.pregnancyMode));
+      setHealthItem("cyclecare_age_group", imported.ageGroup);
+      setHealthItem("cyclecare_tracked_symptoms", JSON.stringify(imported.trackedSymptoms));
       window.dispatchEvent(new Event("cyclecare-data-updated"));
       window.dispatchEvent(new Event("cyclecare-symptoms-updated"));
       setMessage("Import complete. Your browser will refresh the records on affected screens.");
-    } catch {
-      setMessage("Import failed. Choose an unmodified CycleCare JSON export with valid dates.");
+    } catch (error) {
+      setMessage(error instanceof Error
+        ? `Import failed: ${error.message}`
+        : "Import failed. Choose a valid CycleCare JSON export.");
     } finally {
       event.target.value = "";
     }
@@ -3424,38 +3544,54 @@ function SettingsPage({
 
     if (!confirmed) return;
 
-    await vaultWriteQueue;
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith("cyclecare_"))
-      .forEach((key) => localStorage.removeItem(key));
-    vaultKey = null;
-    vaultData = null;
-    window.location.reload();
+    try {
+      await vaultWriteQueue;
+      const keys = Object.keys(localStorage).filter((key) => key.startsWith("cyclecare_"));
+      keys.forEach((key) => localStorage.removeItem(key));
+      const remaining = Object.keys(localStorage).filter((key) => key.startsWith("cyclecare_"));
+      if (remaining.length) {
+        throw new Error(`Some CycleCare data could not be removed: ${remaining.join(", ")}`);
+      }
+      vaultKey = null;
+      vaultData = null;
+      vaultMetadata = null;
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error
+        ? `Data deletion failed. ${error.message}`
+        : "Data deletion failed. Check browser storage permissions and try again.");
+    }
   }
 
-  async function savePin() {
-    if (!/^\d{4}$/.test(pin)) {
-      setMessage("Choose exactly four digits for the PIN.");
+  async function saveVaultPin() {
+    if (!/^\d{5}$/.test(vaultPin)) {
+      setMessage("Choose exactly five digits for your PIN.");
       return;
     }
-    if (pin !== pinConfirm) {
+    if (vaultPin !== vaultPinConfirm) {
       setMessage("The PIN entries do not match.");
       return;
     }
     if (!window.isSecureContext || !crypto?.subtle) {
-      setMessage("Encrypted PIN storage needs a secure browser context (HTTPS or localhost) with Web Crypto support.");
+      setMessage("Encrypted storage needs a secure browser context (HTTPS or localhost) with Web Crypto support.");
       return;
     }
-    const exported = window.confirm("Before enabling encryption, export your records if you want a separate backup. A forgotten PIN cannot be recovered. Continue?");
+    const exported = window.confirm(`Before ${hasVault ? "changing your PIN" : "enabling encryption"}, export your records if you want a separate backup. A forgotten PIN cannot be recovered. A five-digit PIN is easier to guess offline than a long password if someone obtains the vault file. Continue?`);
     if (!exported) return;
     try {
-      await onEnableVault(pin);
-      setHasVault(true);
-      setPin("");
-      setPinConfirm("");
-      setMessage("Encrypted storage is on. Your four-digit PIN is not stored and cannot be recovered.");
-    } catch {
-      setMessage("Could not enable encrypted storage. Your existing records were not intentionally removed; export a backup and try again.");
+      if (hasVault) {
+        await onChangeVaultPin(vaultPin);
+      } else {
+        await onEnableVault(vaultPin);
+        setHasVault(true);
+      }
+      setVaultPin("");
+      setVaultPinConfirm("");
+      setMessage("Encrypted storage is updated. Your PIN is not stored and cannot be recovered.");
+    } catch (error) {
+      setMessage(error instanceof Error
+        ? `Could not update encrypted storage: ${error.message}`
+        : "Could not update encrypted storage. Your current records were not intentionally removed.");
     }
   }
 
@@ -3492,7 +3628,7 @@ function SettingsPage({
         <div>
           <h3>Local storage</h3>
           <p>
-            Records stay in this browser. Without PIN encryption, anyone with
+            Records stay in this browser. Without vault encryption, anyone with
             access to this browser profile or developer tools may be able to
             view them.
           </p>
@@ -3505,13 +3641,13 @@ function SettingsPage({
         <span className="eyebrow">PRIVACY CENTER</span>
         <h3 id="privacy-center-heading">Your data on this device</h3>
         <p>
-          CycleCare stores your period entries and symptom check-ins in this browser's localStorage. When the optional PIN lock is off, these records are not encrypted and someone with access to this browser profile or device may be able to view them.
+          CycleCare stores your period entries and symptom check-ins in this browser's localStorage. When the optional encrypted vault is off, these records are not encrypted and someone with access to this browser profile or device may be able to view them.
         </p>
         <p>
           Clearing browser data can permanently remove these records. Use the export option to save a copy, and the delete option below to remove CycleCare's health records from this browser.
         </p>
         <p className="privacy-limit">
-          A four-digit PIN can encrypt stored records, but it is not a substitute for device security. Someone with a copy of browser storage could try to guess a short PIN. Forgotten PINs cannot be recovered.
+          Browser storage is not a backup or a security boundary. The optional vault encrypts selected health records while stored, but records are available to this app while unlocked. A copied vault can be attacked offline, and a five-digit PIN is easier to guess than a long password. Forgotten PINs cannot be recovered.
         </p>
 
         <div className="discreet-setting">
@@ -3658,21 +3794,33 @@ function SettingsPage({
 
       <section className="settings-preferences pin-settings">
         <span className="eyebrow">OPTIONAL ENCRYPTION</span>
-        <h3>Four-digit PIN lock</h3>
+        <h3>Encrypted vault</h3>
         <p>
           {hasVault
-            ? "Health records are encrypted in browser storage with AES-GCM; the key is derived using PBKDF2 and a random salt. A forgotten PIN cannot be recovered."
-            : "A PIN can encrypt stored health records. This protects data at rest in this browser, not records while the app is unlocked or someone has access to your device."}
+            ? "Vault data is encrypted with AES-GCM. New five-digit PINs use PBKDF2-SHA-256 with 600,000 iterations and a random salt. A five-digit PIN has limited resistance to offline guessing if someone copies the vault. The key and decrypted records remain available in this page's memory while unlocked."
+            : "Encrypt selected health records stored in this browser. Encryption protects data at rest, not records while the app is unlocked or someone controls this device."}
         </p>
         {hasVault ? (
-          <button className="secondary-button" onClick={onLockVault}>Lock CycleCare now</button>
+          <>
+            {getEncryptedVaultVersion() !== 3 && <p className="privacy-hint" role="status">This vault uses an older credential format. Enter a new five-digit PIN below to re-encrypt and upgrade it.</p>}
+            <div className="pin-fields">
+              <label className="field-label" htmlFor="vault-new-pin">{getEncryptedVaultVersion() === 3 ? "Change five-digit PIN" : "Set a new five-digit PIN"}</label>
+              <input id="vault-new-pin" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{5}" maxLength={5} value={vaultPin} onChange={(event) => setVaultPin(event.target.value.replace(/\D/g, "").slice(0, 5))} aria-describedby="vault-pin-help" />
+              <label className="field-label" htmlFor="vault-confirm-pin">Confirm five-digit PIN</label>
+              <input id="vault-confirm-pin" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{5}" maxLength={5} value={vaultPinConfirm} onChange={(event) => setVaultPinConfirm(event.target.value.replace(/\D/g, "").slice(0, 5))} />
+              <p id="vault-pin-help" className="privacy-hint">Use a PIN you do not use elsewhere. Because a five-digit PIN has only 100,000 combinations, it offers less protection against offline guessing than a long password. CycleCare cannot recover it.</p>
+              <button className="secondary-button" type="button" onClick={saveVaultPin}>{getEncryptedVaultVersion() === 3 ? "Change PIN" : "Upgrade to five-digit PIN"}</button>
+              <button className="secondary-button" type="button" onClick={onLockVault}>Lock CycleCare now</button>
+            </div>
+          </>
         ) : (
           <div className="pin-fields">
-            <label className="field-label" htmlFor="pin-input">New 4-digit PIN</label>
-            <input id="pin-input" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{4}" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))} />
-            <label className="field-label" htmlFor="pin-confirm">Confirm PIN</label>
-            <input id="pin-confirm" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{4}" maxLength={4} value={pinConfirm} onChange={(event) => setPinConfirm(event.target.value.replace(/\D/g, "").slice(0, 4))} />
-            <button className="secondary-button" onClick={savePin}>Enable encrypted storage</button>
+            <label className="field-label" htmlFor="vault-new-pin">Five-digit PIN</label>
+            <input id="vault-new-pin" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{5}" maxLength={5} value={vaultPin} onChange={(event) => setVaultPin(event.target.value.replace(/\D/g, "").slice(0, 5))} aria-describedby="vault-pin-help" />
+            <label className="field-label" htmlFor="vault-confirm-pin">Confirm five-digit PIN</label>
+            <input id="vault-confirm-pin" type="password" inputMode="numeric" autoComplete="new-password" pattern="[0-9]{5}" maxLength={5} value={vaultPinConfirm} onChange={(event) => setVaultPinConfirm(event.target.value.replace(/\D/g, "").slice(0, 5))} />
+            <p id="vault-pin-help" className="privacy-hint">Use a PIN you do not use elsewhere. Because a five-digit PIN has only 100,000 combinations, it offers less protection against offline guessing than a long password. CycleCare cannot recover it.</p>
+            <button className="secondary-button" type="button" onClick={saveVaultPin}>Enable encrypted storage</button>
           </div>
         )}
       </section>
@@ -3726,94 +3874,66 @@ function hasEncryptedVault() {
   return localStorage.getItem("cyclecare_vault") !== null;
 }
 
-function decodeBase64(value) {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-}
-
-function encodeBase64(value) {
-  return btoa(String.fromCharCode(...new Uint8Array(value)));
-}
-
-async function deriveEncryptionKey(pin, salt) {
-  const material = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-async function encryptVaultData(data, key) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(JSON.stringify(data))
-  );
-  return JSON.stringify({
-    version: 1,
-    iterations: 310000,
-    salt: data.salt,
-    iv: encodeBase64(iv),
-    ciphertext: encodeBase64(ciphertext),
-  });
+function getEncryptedVaultVersion() {
+  try {
+    return JSON.parse(localStorage.getItem("cyclecare_vault") || "null")?.version ?? 1;
+  } catch {
+    return 1;
+  }
 }
 
 async function createHealthVault(pin) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
   const rawData = {};
   encryptedStorageKeys.forEach((key) => {
     rawData[key] = localStorage.getItem(key);
   });
-  const encryptionKey = await deriveEncryptionKey(pin, salt);
-  const encrypted = await encryptVaultData(
-    { ...rawData, salt: encodeBase64(salt) },
-    encryptionKey
-  );
-  localStorage.setItem("cyclecare_vault", encrypted);
-  encryptedStorageKeys.forEach((key) => localStorage.removeItem(key));
-  vaultKey = encryptionKey;
+  const { envelope, key, metadata } = await createVaultEnvelope(rawData, pin);
+  localStorage.setItem("cyclecare_vault", envelope);
+  try {
+    encryptedStorageKeys.forEach((storageKey) => localStorage.removeItem(storageKey));
+    if (encryptedStorageKeys.some((storageKey) => localStorage.getItem(storageKey) !== null)) {
+      throw new Error("Some plaintext records remain in browser storage.");
+    }
+  } catch (error) {
+    try {
+      encryptedStorageKeys.forEach((storageKey) => {
+        if (rawData[storageKey] !== null) localStorage.setItem(storageKey, rawData[storageKey]);
+      });
+      localStorage.removeItem("cyclecare_vault");
+    } catch {
+      throw new Error("Vault setup did not finish cleanly. Check browser storage and verify your records before continuing.");
+    }
+    throw new Error(`${error.message} Export your data and retry.`);
+  }
+  vaultKey = key;
   vaultData = rawData;
+  vaultMetadata = metadata;
 }
 
-async function openHealthVault(pin) {
-  const payload = JSON.parse(localStorage.getItem("cyclecare_vault") || "null");
-  if (
-    !payload ||
-    payload.version !== 1 ||
-    payload.iterations !== 310000 ||
-    typeof payload.salt !== "string" ||
-    typeof payload.iv !== "string" ||
-    typeof payload.ciphertext !== "string"
-  ) {
-    throw new Error("Encrypted data format is invalid");
-  }
-  const salt = decodeBase64(payload.salt);
-  const encryptionKey = await deriveEncryptionKey(pin, salt);
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: decodeBase64(payload.iv) },
-    encryptionKey,
-    decodeBase64(payload.ciphertext)
+async function openHealthVault(secret) {
+  const opened = await openVaultEnvelope(
+    localStorage.getItem("cyclecare_vault") || "null",
+    secret
   );
-  const data = JSON.parse(new TextDecoder().decode(plaintext));
-  vaultKey = encryptionKey;
-  vaultData = data;
+  vaultKey = opened.key;
+  vaultData = opened.data;
+  vaultMetadata = opened.metadata;
+}
+
+async function changeHealthVaultPin(pin) {
+  if (!vaultKey || !vaultData) throw new Error("Unlock the vault before changing its PIN.");
+  await vaultWriteQueue;
+  const { envelope, key, metadata } = await createVaultEnvelope(vaultData, pin);
+  localStorage.setItem("cyclecare_vault", envelope);
+  vaultKey = key;
+  vaultMetadata = metadata;
 }
 
 async function persistHealthVault() {
-  if (!vaultKey || !vaultData) return;
-  const salt = JSON.parse(localStorage.getItem("cyclecare_vault")).salt;
+  if (!vaultKey || !vaultData || !vaultMetadata) return;
   localStorage.setItem(
     "cyclecare_vault",
-    await encryptVaultData({ ...vaultData, salt }, vaultKey)
+    await encryptVaultData(vaultData, vaultKey, vaultMetadata)
   );
 }
 

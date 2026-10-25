@@ -8,8 +8,11 @@ const ageGroups = ["under18", "adult", "prefer-not"];
 export function validateImportData(data, { today, availableSymptoms }) {
   if (
     !data ||
+    (data.format !== undefined && data.format !== "cyclecare-export-v1") ||
     !Array.isArray(data.periods) ||
-    !Array.isArray(data.symptoms)
+    !Array.isArray(data.symptoms) ||
+    data.periods.length > 10000 ||
+    data.symptoms.length > 10000
   ) {
     throw new Error("Invalid CycleCare export shape");
   }
@@ -21,9 +24,9 @@ export function validateImportData(data, { today, availableSymptoms }) {
       entry &&
       parseDateOnly(entry.startDate) &&
       entry.startDate <= today &&
-      Number.isInteger(Number(entry.periodLength)) &&
-      Number(entry.periodLength) >= 1 &&
-      Number(entry.periodLength) <= 10 &&
+      Number.isInteger(entry.periodLength) &&
+      entry.periodLength >= 1 &&
+      entry.periodLength <= 10 &&
       (entry.flow === undefined || periodFlows.includes(entry.flow)) &&
       (entry.changesEveryHour === undefined || typeof entry.changesEveryHour === "boolean") &&
       (entry.largeClots === undefined || typeof entry.largeClots === "boolean")
@@ -35,26 +38,31 @@ export function validateImportData(data, { today, availableSymptoms }) {
       parseDateOnly(entry.date) &&
       entry.date <= today &&
       Array.isArray(entry.symptoms) &&
+      entry.symptoms.length <= availableSymptoms.length &&
+      new Set(entry.symptoms).size === entry.symptoms.length &&
       entry.symptoms.every(
         (symptom) =>
           typeof symptom === "string" && availableSymptoms.includes(symptom)
       ) &&
-      (entry.id === undefined || typeof entry.id === "string" || typeof entry.id === "number") &&
-      (entry.note === undefined || typeof entry.note === "string") &&
+      (entry.id === undefined ||
+        ((typeof entry.id === "string" && entry.id.length <= 128) ||
+          (typeof entry.id === "number" && Number.isFinite(entry.id)))) &&
+      (entry.note === undefined || (typeof entry.note === "string" && entry.note.length <= 4000)) &&
       (entry.flow === undefined || entry.flow === "" || periodFlows.includes(entry.flow)) &&
       (entry.pain === undefined ||
-        (Number.isFinite(Number(entry.pain)) &&
-          Number(entry.pain) >= 0 &&
-          Number(entry.pain) <= 10)) &&
+        (typeof entry.pain === "number" && Number.isFinite(entry.pain) &&
+          entry.pain >= 0 && entry.pain <= 10)) &&
       (entry.mood === undefined || moods.includes(entry.mood)) &&
       (entry.energy === undefined || energyLevels.includes(entry.energy)) &&
       (entry.sleepHours === undefined ||
         entry.sleepHours === null ||
-        (Number.isFinite(Number(entry.sleepHours)) &&
-          Number(entry.sleepHours) >= 0 &&
-          Number(entry.sleepHours) <= 24)) &&
+        (typeof entry.sleepHours === "number" &&
+          Number.isFinite(entry.sleepHours) &&
+          entry.sleepHours >= 0 &&
+          entry.sleepHours <= 24)) &&
       ["medicines", "note"].every(
-        (field) => entry[field] === undefined || typeof entry[field] === "string"
+        (field) => entry[field] === undefined ||
+          (typeof entry[field] === "string" && entry[field].length <= 4000)
       ) &&
       [
         "painStopsActivities",
@@ -77,8 +85,14 @@ export function validateImportData(data, { today, availableSymptoms }) {
       (reminder) =>
         reminder &&
         typeof reminder.id === "string" &&
+        reminder.id.length > 0 &&
+        reminder.id.length <= 128 &&
         typeof reminder.title === "string" &&
+        reminder.title.length > 0 &&
+        reminder.title.length <= 120 &&
         typeof reminder.message === "string" &&
+        reminder.message.length > 0 &&
+        reminder.message.length <= 1000 &&
         /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(reminder.time) &&
         typeof reminder.enabled === "boolean"
     );
@@ -87,13 +101,18 @@ export function validateImportData(data, { today, availableSymptoms }) {
     (data.pregnancyMode === undefined || typeof data.pregnancyMode === "boolean") &&
     (data.trackedSymptoms === undefined ||
       (Array.isArray(data.trackedSymptoms) &&
-        data.trackedSymptoms.every((symptom) => availableSymptoms.includes(symptom))));
+      data.trackedSymptoms.length <= availableSymptoms.length &&
+      new Set(data.trackedSymptoms).size === data.trackedSymptoms.length &&
+      data.trackedSymptoms.every((symptom) => availableSymptoms.includes(symptom))));
 
   if (
     !validPeriods ||
     periodDates.size !== periods.length ||
     !validSymptoms ||
+    new Set(symptoms.flatMap((entry) => entry?.id === undefined ? [] : [String(entry.id)])).size !==
+    symptoms.filter((entry) => entry.id !== undefined).length ||
     !validReminders ||
+    new Set(reminders.map((reminder) => reminder?.id)).size !== reminders.length ||
     !validProfile
   ) {
     throw new Error("Export contains invalid or unsupported records");

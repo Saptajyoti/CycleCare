@@ -12,12 +12,16 @@ profile; the app does not send them to a CycleCare server.
   recent recorded cycle gaps, with uncertainty messaging and a possible missed
   log review prompt.
 - Symptom and mood check-ins, recent record summaries, cycle insights, and
-  cautious, record-based care guidance.
+  cautious, record-based care guidance with separate self-care, medical-advice,
+  and urgent-symptom sections.
 - Offline keyword matching for a finite FAQ, sourced health lessons and
   articles, bilingual search, essential English/Hindi learning content, and
   optional pause/resume read-aloud.
 - An opt-in Gemini educational assistant, with the existing offline FAQ kept as
-  a fallback. Saved CycleCare data is never sent to Gemini.
+  a fallback. Only the question typed into the assistant is sent to the
+  CycleCare backend and Gemini after consent; saved records and chat history
+  are not sent. Deterministic local and backend safety checks return fixed
+  guidance for concerning symptoms without asking Gemini.
 - Opt-in reminders while the Reminders page is open and optional pregnancy
   information mode.
 - A warm ivory and blush botanical theme, responsive desktop/mobile preview,
@@ -29,7 +33,10 @@ profile; the app does not send them to a CycleCare server.
 CycleCare does not diagnose, confirm ovulation, provide contraception advice,
 monitor emergencies, or replace a healthcare professional. Estimates are not
 guaranteed. Food and drink suggestions are general comfort ideas, not
-treatments.
+treatments. The linked health guidance has not yet been reviewed by a qualified
+clinician. AI responses are educational only and should not guide starting or
+stopping medication. Seek professional or emergency care when indicated; do not
+wait for CycleCare.
 
 ## Technology and architecture
 
@@ -57,15 +64,23 @@ is **not encrypted** and may be accessible to someone with access to the same
 browser profile or developer tools. Clearing browser data can erase records.
 Discreet Mode changes what is shown on screen; it is not a security boundary.
 
-The optional four-digit PIN vault uses Web Crypto AES-GCM with a key derived
-using PBKDF2/SHA-256. The PIN is not stored and cannot be recovered. A short PIN
-can be guessed offline if someone obtains the browser storage; this is not
-device security. The vault requires a secure context such as HTTPS or localhost.
+The optional vault uses Web Crypto AES-GCM and a 256-bit key derived from a
+five-digit PIN using PBKDF2/SHA-256 with 600,000 iterations and a random salt.
+The PIN is not stored and cannot be recovered. Five digits provide only
+100,000 combinations, so this is weaker against offline guessing than a long
+password if someone obtains the vault file. Existing four-digit PIN and
+passphrase vaults remain unlockable so users can upgrade them in Settings.
+This is not device security. The vault requires a secure context such as
+HTTPS or localhost and protects selected records only while stored, not while
+unlocked.
 
 Exports contain sensitive health information; keep exported files private.
-Import validates record structure, dates, and reminder times before replacing
-data, after confirmation. The application has no account, sync, analytics, or
-health-record transmission service.
+Import validates supported fields, record types, dates, uniqueness, and a 5 MB
+file-size limit before replacing data, after confirmation. Deletion removes
+CycleCare keys from this browser's localStorage and verifies the keys are
+absent. The application has no account, sync, analytics, or health-record
+transmission service. Standard network metadata can be processed by the
+backend/provider when the optional assistant is used.
 
 ## Run locally
 
@@ -96,7 +111,12 @@ npm run dev
 
 The frontend calls `http://localhost:5000/api/assistant` only after the user
 explicitly consents. That preference stays local to the browser and can be
-revoked from Ask.
+revoked from Ask. Only the question entered in the assistant is sent in the
+request to the CycleCare backend and then to Google Gemini; saved CycleCare
+records and prior chat messages are not sent. The services may process standard
+connection metadata, such as an IP address. Do not include identifying or
+sensitive details. Updated consent disclosures require older saved consent to
+be confirmed again.
 
 ## Deploy to Render
 
